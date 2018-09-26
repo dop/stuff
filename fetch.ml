@@ -1,63 +1,32 @@
-open! Core
+open Core
 open Lwt
-open Cohttp
-open Cohttp_lwt_unix
+open Fetch_lib
 
-let _fetch url =
-  Client.get (Uri.of_string url) >>= (fun (resp, body) ->
-      let code = resp |> Response.status |> Code.code_of_status in
-      Printf.printf "Response code: %d\n" code;
-      Printf.printf "Headers: %s\n" (resp |> Response.headers |> Header.to_string);
-      body |> Cohttp_lwt.Body.to_string >|= fun body ->
-      Printf.printf "Body of length: %d\n" (String.length body);
-      body
-    )
+let remove_unimportant_attributes node =
+  let open Soup in
+  fold_attributes (fun _ k _ ->
+      if k <> "href" then
+        delete_attribute k node
+    ) () node
 
-let cached ~cache fetch =
-  fun url ->
-    match Hashtbl.find cache url with
-    | Some page ->
-      Lwt.return page
-    | None ->
-      Lwt.( fetch url >|= (fun page ->
-          let _ = Hashtbl.add cache ~key:url ~data:page in
-          page
-        ))
-
-type page_cache =
-  String.t Base.Hashtbl.M(String).t
-[@@deriving sexp]
-
-let fetch =
-  cached _fetch
-
-let cache_file =
-  "cache.bin"
-
-let with_cache_in f =
-  In_channel.with_file cache_file ~f
-
-let with_cache_out f =
-  Out_channel.with_file cache_file ~f
-
-let write_to_cache tbl =
-  with_cache_out (fun oc ->
-      Sexp.output oc (sexp_of_page_cache tbl))
-
-let read_from_cache () =
-  let empty = Hashtbl.create ~size:1 (module String) in
-  match Sys.file_exists cache_file with
-  | `No | `Unknown ->
-    write_to_cache empty;
-    empty
-  | `Yes ->
-    try
-      page_cache_of_sexp (Sexp.load_sexp cache_file)
-    with e ->
-      empty
+let rec tree_remove_attributes node =
+  remove_unimportant_attributes node;
+  let open Soup in
+  node |> children |> elements |> iter tree_remove_attributes
 
 let () =
   let tbl = read_from_cache () in
   let body = Lwt_main.run (fetch ~cache:tbl "http://misko.hevery.com/code-reviewers-guide/") in
-  print_endline ("Received body\n" ^ body);
-  write_to_cache tbl
+  write_to_cache tbl;
+  let open Soup in
+  let content = parse body $ "#content" in
+  let title =
+    children content
+    |> elements
+    |> filter (fun el -> name el = "h2")
+    |> first
+    |> Option.map ~f:to_string |> Option.value ~default:"?" in
+  let nodes = content $ ".entry" |> children |> elements |> to_list in
+  let () = List.iter ~f:tree_remove_attributes nodes in
+  print_endline ("title: " ^ title);
+  print_endline ("entry: " ^ (List.map ~f:to_string nodes |> String.concat ~sep:"\n"))
