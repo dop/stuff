@@ -1,0 +1,16 @@
+* Testing
+** Writing Testable Code
+*** Google Tech Talks - Miško Hevery
+https://www.youtube.com/playlist?list=PLD0011D00849E1B79
+*** Guide: Writing Testable Code
+http://misko.hevery.com/code-reviewers-guide/
+
+**** Flaw: Constructor does Real Work
+http://misko.hevery.com/code-reviewers-guide/flaw-constructor-does-real-work/
+
+**** Flaw: Digging into Collaborators
+http://misko.hevery.com/code-reviewers-guide/flaw-digging-into-collaborators/
+**** Flaw: Brittle Global State & Singletons
+http://misko.hevery.com/code-reviewers-guide/flaw-brittle-global-state-singletons/
+**** Flaw: Class Does Too Much
+http://misko.hevery.com/code-reviewers-guide/flaw-class-does-too-much/

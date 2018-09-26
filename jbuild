@@ -1,0 +1,4 @@
+(executable
+ ((name fetch)
+  (libraries (ppx_deriving ppx_sexp_conv lwt cohttp cohttp-lwt cohttp-lwt-unix core lambdasoup))
+  (preprocess (pps (ppx_sexp_conv)))))
