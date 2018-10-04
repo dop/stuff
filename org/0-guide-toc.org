@@ -16,7 +16,7 @@ getting this guide done:
 
 Also thanks to Blaine R Southam who has turned it into a [[http://misko.hevery.com/attachments/Guide-Writing%20Testable%20Code.pdf][pdf book]].
 
-[[./1-constructor-does-real-work.html][Flaw #1: Constructor does Real Work]]
+[[file:1-constructor-does-real-work.org][Flaw #1: Constructor does Real Work]]
 
 *Warning Signs*
 
@@ -30,7 +30,7 @@ Also thanks to Blaine R Southam who has turned it into a [[http://misko.hevery.
   rather than using a factory or builder
 - Adding or using an initialization block
 
-[[./2-digging-into-collaborators.html][Flaw #2: Digging into Collaborators]]
+[[file:2-digging-into-collaborators.org][Flaw #2: Digging into Collaborators]]
 
 *Warning Signs*
 
@@ -41,7 +41,7 @@ Also thanks to Blaine R Southam who has turned it into a [[http://misko.hevery.
 - Suspicious names: context, environment, principal, container, or
   manager
 
-[[./3-global-state.html][Flaw #3: Brittle Global State & Singletons]]
+[[file:3-global-state.org][Flaw #3: Brittle Global State & Singletons]]
 
 *Warning Signs*
 
@@ -51,7 +51,7 @@ Also thanks to Blaine R Southam who has turned it into a [[http://misko.hevery.
 - Adding or using registries
 - Adding or using service locators
 
-[[./4-doing-too-much.html][Flaw #4: Class Does Too Much]]
+[[file:4-doing-too-much.org][Flaw #4: Class Does Too Much]]
 
 *Warning Signs*
 
