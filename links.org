@@ -4,10 +4,8 @@
 https://www.youtube.com/playlist?list=PLD0011D00849E1B79
 *** Guide: Writing Testable Code
 http://misko.hevery.com/code-reviewers-guide/
-
 **** Flaw: Constructor does Real Work
 http://misko.hevery.com/code-reviewers-guide/flaw-constructor-does-real-work/
-
 **** Flaw: Digging into Collaborators
 http://misko.hevery.com/code-reviewers-guide/flaw-digging-into-collaborators/
 **** Flaw: Brittle Global State & Singletons

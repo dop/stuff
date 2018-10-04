@@ -1,0 +1,58 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta content="IE=edge,chrome=1" http-equiv="X-UA-Compatible">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Guide: Writing Testable Code</title>
+    <link rel="stylesheet" href="style.css" type="text/css">
+  </head>
+  <body>
+    <h2>Guide: Writing Testable Code</h2>
+    <p>To keep our code at Google in the best possible shape we provided our software engineers with these constant reminders. Now, we are happy to share them with the world.</p>
+    <p>
+    </p>
+    <p>Many thanks to these folks for inspiration and hours of hard work getting this guide done:</p>
+    <ul>
+      <li><a href="http://jawspeak.com/">Jonathan Wolter </a></li>
+      <li>Russ Ruffer</li>
+      <li><a href="http://misko.hevery.com/about/">Miško Hevery</a></li>
+    </ul>
+    <p>Also thanks to&nbsp;Blaine R Southam who has turned it into a <a href="http://misko.hevery.com/attachments/Guide-Writing Testable Code.pdf">pdf book</a>.</p>
+    <p><a href="./1-constructor-does-real-work.html">Flaw #1: Constructor does Real Work</a></p>
+    <p><strong>Warning Signs</strong></p>
+    <ul>
+      <li><span>new</span> keyword in a constructor or at field declaration</li>
+      <li> Static method calls in a constructor or at         field declaration</li>
+      <li> Anything more than field assignment in     constructors</li>
+      <li> Object not fully initialized after the     constructor finishes (watch out for <span>initialize</span> methods)</li>
+      <li> Control flow (conditional or looping logic)        in a constructor</li>
+      <li> Code does complex object graph construction        inside a constructor rather than using a factory or builder</li>
+      <li> Adding or using an initialization block</li>
+    </ul>
+    <p><a href="./2-digging-into-collaborators.html">Flaw #2: Digging into Collaborators</a></p>
+    <p><strong>Warning Signs</strong></p>
+    <ul>
+      <li>Objects are passed in but never used directly       (only used to get access to other objects)</li>
+      <li>Law of Demeter violation: method call chain         walks an object graph with more than one dot (<span>.</span>)</li>
+      <li>Suspicious names: <span>context</span>,     <span>environment</span>, <span>principal</span>,       <span>container</span>, or manager</li>
+    </ul>
+    <p><a href="./3-global-state.html">Flaw #3: Brittle Global State &amp; Singletons</a></p>
+    <p><strong>Warning Signs</strong></p>
+    <ul>
+      <li>Adding or using singletons</li>
+      <li>Adding or using static fields or static     methods</li>
+      <li>Adding or using static initialization blocks</li>
+      <li>Adding or using registries</li>
+      <li>Adding or using service locators</li>
+    </ul>
+    <p><a href="./4-doing-too-much.html">Flaw #4: Class Does Too Much</a></p>
+    <p><strong>Warning Signs</strong></p>
+    <ul>
+      <li>Summing up what the class does includes the         word “and”</li>
+      <li>Class would be challenging for new team     members to read and quickly “get it”</li>
+      <li>Class has fields that are only used in some         methods</li>
+      <li>Class has static methods that only operate on       parameters</li>
+    </ul>
+  </body>
+</html>
