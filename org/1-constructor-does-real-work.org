@@ -20,16 +20,12 @@ instantiation or altering collaborators in the test.
 | - Adding or using an initialization block                                                                 |
 
 * Why this is a Flaw
-:PROPERTIES:
-:CUSTOM_ID: why-this-is-a-flaw
-:END:
-
 When your constructor has to instantiate and initialize its
 collaborators, the result tends to be an inflexible and prematurely
 coupled design. Such constructors shut off the ability to inject test
 collaborators when testing.
 
-/It violates the Single Responsibility Principle/
+** It violates the Single Responsibility Principle
 
 When collaborator construction is mixed with initialization, it suggests
 that there is only one way to configure the class, which closes off
@@ -38,7 +34,7 @@ creation is a full fledged responsibility --- a different one from why a
 class exists in the first place. Doing such work in a constructor
 violates the Single Responsibility Principle.
 
-/Testing Directly is Difficult/
+** Testing Directly is Difficult
 
 Testing such constructors is difficult. To instantiate an object, the
 constructor must execute. And if that constructor does lots of work, you
@@ -49,7 +45,7 @@ in the constructor, but may be missed due to missing test coverage from
 tests that weren't written because the constructor is so difficult to
 test. We end up in a vicious cycle.
 
-/Subclassing and Overriding to Test is Still Flawed/
+** Subclassing and Overriding to Test is Still Flawed
 
 Other times a constructor does little work itself, but delegates to a
 method that is expected to be overridden in a test subclass. This may
@@ -59,25 +55,22 @@ resort. Additionally, by subclassing, you will fail to test the method
 that you override. And that method does lots of work (remember -- that's
 why it was created in the first place), so it probably should be tested.
 
-/It Forces Collaborators on You/
+** It Forces Collaborators on You
 
 Sometimes when you test an object, you don't want to actually create all
 of its collaborators. For instance, you don't want a real
-MySqlRepository object that talks to the MySql service. However, if they
-are directly created using new
-MySqlRepositoryServiceThatTalksToOtherServers() inside your System Under
+=MySqlRepository= object that talks to the MySql service. However, if they
+are directly created using =new MySqlRepositoryServiceThatTalksToOtherServers()= inside your System Under
 Test (SUT), then you will be forced to use that heavyweight object.
 
-/It Erases a "Seam"/
+** It Erases a "Seam"
 
 Seams are places you can slice your codebase to remove dependencies and
-instantiate small, focused objects. When you do new XYZ() in a
-constructor, you'll never be able to get a different (subclass) object
-created. (See Michael Feathers book
-[[http://www.amazon.com/Working-Effectively-Legacy-Robert-Martin/dp/0131177052][Working Effectively with Legacy Code]] for more about seams).
+instantiate small, focused objects. When you do =new XYZ()= in a constructor,
+you'll never be able to get a different (subclass) object created. (See Michael
+Feathers book [[http://www.amazon.com/Working-Effectively-Legacy-Robert-Martin/dp/0131177052][Working Effectively with Legacy Code]] for more about seams).
 
-/It Still is a Flaw even if you have Multiple Constructors (Some for
-"Test Only")/
+** It Still is a Flaw even if you have Multiple Constructors (Some for "Test Only")
 
 Creating a separate "test only" constructor does not solve the problem.
 The constructors that do work will still be used by other classes. Even
@@ -86,10 +79,10 @@ specific constructor), you're going to run into other classes that use
 the hard-to-test constructor. And when testing those other classes, your
 hands will be tied.
 
-/Bottom Line/
+** Bottom Line
 
-/It all comes down to how hard or easy it is to construct the class /in
-isolation/ or /with test-double collaborators/.
+It all comes down to how hard or easy it is to construct the class in
+isolation or with test-double collaborators.
 
 - If it's hard, you're doing too much work in the constructor!
 - If it's easy, pat yourself on the back.
@@ -102,13 +95,9 @@ where this class will be instantiated.)
 So many designs are full of "objects that instantiate other objects or
 retrieve objects from globally accessible locations. These programming
 practices, when left unchecked, lead to highly coupled designs that are
-difficult to test." [J.B. Rainsberger,
-[[http://www.manning.com/rainsberger/][JUnit Recipes]], Recipe 2.11]
+difficult to test." [J.B. Rainsberger, [[http://www.manning.com/rainsberger/][JUnit Recipes]], Recipe 2.11]
 
 * Recognizing the Flaw
-:PROPERTIES:
-:CUSTOM_ID: recognizing-the-flaw
-:END:
 
 Examine for these symptoms:
 
@@ -116,7 +105,7 @@ Examine for these symptoms:
   test-double in a test? (Typically this is anything bigger than a
   simple value object).
 - Any static method calls? (Remember: static calls are non-mockable, and
-  non-injectable, so if you see Server.init() or anything of that ilk,
+  non-injectable, so if you see =Server.init()= or anything of that ilk,
   warning sirens should go off in your head!)
 - Any conditional or loop logic? (You will have to successfully navigate
   the logic every time you instantiate the object. This will result in
@@ -124,36 +113,39 @@ Examine for these symptoms:
   also if you happen to need this class while testing any of the related
   classes.)
 
-Think about one fundamental question when writing or reviewing code:
+Think about one fundamental question when writing or reviewing code: How am I
+going to test this?
 
-How am I going to test this?
+#+BEGIN_QUOTE
+If the answer is not obvious, or it looks like the test would be ugly or hard to
+write, then take that as a warning signal. Your design probably needs to be
+modified; change things around until the code is easy to test, and your design
+will end up being far better for the effort."
 
-"If the answer is not obvious, or it looks like the test would be ugly
-or hard to write, then take that as a warning signal. Your design
-probably needs to be modified; change things around until the code is
-easy to test, and your design will end up being far better for the
-effort." [Hunt, Thomas. [[http://oreilly.com/catalog/9780974514017/][Pragmatic Unit Testing in Java with JUnit]], p 103 (somewhat dated, but a decent and quick read)]
+[Hunt, Thomas. [[http://oreilly.com/catalog/9780974514017/][Pragmatic Unit Testing in Java with JUnit]], p 103]
+#+END_QUOTE
 
 *Note*: Constructing *value objects* may be acceptable in many cases
-(examples: LinkedList; HashMap, User, EmailAddress, CreditCard). Value
-objects key attributes are: (1) Trivial to construct (2) are state
-focused (lots of getters/setters low on behavior) (3) do not refer to
-any service object.
+(examples: =LinkedList=, =HashMap=, =User=, =EmailAddress=, =CreditCard=). Value
+object's key attributes are:
+- trivial to construct;
+- state focused (lots of getters and setters, low on behavior);
+- do not refer to any service object.
 
 * Fixing the Flaw
 :PROPERTIES:
 :CUSTOM_ID: fixing-the-flaw
 :END:
 
-/Do not create collaborators in your constructor, but pass them in/
+/Do not create collaborators in your constructor, but pass them in/.
 
 Move the responsibility for object graph construction and initialization
 into another object. (e.g. extract a builder, factory or Provider, and
 pass these collaborators to your constructor).
 
-Example: If you depend on a DatabaseService (hopefully that's an
+Example: If you depend on a =DatabaseService= (hopefully that's an
 interface), then use Dependency Injection (DI) to pass in to the
-constructor the exact subclass of DatabaseService object you need.
+constructor the exact subclass of =DatabaseService= object you need.
 
 /To repeat/: /*Do not create collaborators in your constructor*/, but
 pass them in. (Don't look for things! Ask for things!)
@@ -201,86 +193,73 @@ objects difficult/.
 :END:
 
 #+caption: Before: Hard to Test
-#+begin_src java
-// Basic new operators called directly in
-//   the class' constructor. (Forever
-//   preventing a seam to create different
-//   kitchen and bedroom collaborators).
+#+begin_src typescript
+// Basic new operators called directly in the class' constructor. (Forever
+// preventing a seam to create different kitchen and bedroom collaborators).
+class Kitchen {}
+class Bedroom {}
+
 class House {
-    Kitchen kitchen = new Kitchen();
-    Bedroom bedroom;
-    House() {
-        bedroom = new Bedroom();
-    }
-    // ...
-}
-// An attempted test that becomes pretty hard
-class HouseTest extends TestCase {
-    public void testThisIsReallyHard() {
-        House house = new House();
-        // Darn! I'm stuck with those Kitchen and
-        //   Bedroom objects created in the
-        //   constructor.
-        // ...
-    }
+  private kitchens: Kitchen[] = [new Kitchen()];
+  private bedrooms: Bedroom[];
+  constructor() {
+    this.bedrooms = [new Bedroom()];
+  }
+
+  getNumberOfBedrooms() {
+    return this.bedrooms.length;
+  }
 }
 
+// It not possible to have the house you want!
+it('should have 2 bedrooms', () => {
+  const house = new House();
+  expect(house.getNumberOfBedrooms()).toBe(2);
+})
 #+end_src
 
 #+caption: After: Testable and Flexible Design
-#+begin_src java
+#+begin_src typescript
+// Basic new operators called directly in the class' constructor. (Forever
+// preventing a seam to create different kitchen and bedroom collaborators).
+class Bedroom {}
+
 class House {
-    Kitchen kitchen;
-    Bedroom bedroom;
-    // Have Guice create the objects
-    //   and pass them in
-    @Inject
-    House(Kitchen k, Bedroom b) {
-        kitchen = k;
-        bedroom = b;
-    }
-    // ...
-}
-// New and Improved is trivially testable, with any
-//   test-double objects as collaborators.
-class HouseTest extends TestCase {
-    public void testThisIsEasyAndFlexible() {
-        Kitchen dummyKitchen = new DummyKitchen();
-        Bedroom dummyBedroom = new DummyBedroom();
-         House house =
-             new House(dummyKitchen, dummyBedroom);
-        // Awesome, I can use test doubles that
-        //   are lighter weight.
-        // ...
-    }
+  constructor(private kitchens: Kitchen[], private bedrooms: Bedroom[]) {}
+
+  getNumberOfBedrooms() {
+    return this.bedrooms.length;
+  }
 }
 
+// Two bedrooms, excatly as we wanted
+it('should have 2 bedrooms', () => {
+  const house = new House([], [new Bedroom(), new Bedroom()]);
+  expect(house.getNumberOfBedrooms()).toBe(2);
+})
 #+end_src
 
 This example mixes object graph creation with logic. In tests we often
 want to create a different object graph than in production. Usually it
 is a smaller graph with some objects replaced with test-doubles. By
 leaving the new operators inline we will never be able to create a graph
-of objects for testing. See:
-"[[http://misko.hevery.com/2008/07/08/how-to-think-about-the-new-operator/][How
-to think about the new operator]]"
+of objects for testing. See: "[[http://misko.hevery.com/2008/07/08/how-to-think-about-the-new-operator/][How to think about the new operator]]"
 
 - Flaw: inline object instantiation where fields are declared has the
   same problems that work in the constructor has.
-- Flaw: this may be easy to instantiate but if Kitchen represents
+- Flaw: this may be easy to instantiate but if =Kitchen= represents
   something expensive such as file/database access it is not very
-  testable since we could never replace the Kitchen or Bedroom with a
+  testable since we could never replace the =Kitchen= or =Bedroom= with a
   test-double.
 - Flaw: Your design is more brittle, because you can never
-  polymorphically replace the behavior of the kitchen or bedroom in the
-  House.
+  polymorphically replace the behavior of the =Kitchen= or =Bedroom= in the
+  =House=.
 
-If the Kitchen is a value object such as: Linked List, Map, User, Email
-Address, etc., then we can create them inline as long as the value
-objects do not reference service objects. Service objects are the type
-most likely that need to be replaced with test-doubles, so you never
-want to lock them in with direct instantiation or instantiation via
-static method calls.
+If the =Kitchen= is a value object such as: =LinkedList=, =Map=, =User=, =EmailAddress=,
+etc., then we can create them inline as long as the value objects do not
+reference service objects. Service objects are the type most likely that need to
+be replaced with test-doubles, so you never want to lock them in with direct
+instantiation or instantiation via static method calls.
 
 ** Problem: Constructor takes a partially initialized object and has to set it up
 :PROPERTIES:
@@ -288,9 +267,13 @@ static method calls.
 :END:
 
 #+caption: Before: Hard to Test
-#+begin_src java
+#+begin_src typescript
 // SUT initializes collaborators. This prevents
 //   tests and users of Garden from altering them.
+class Gardener {
+
+}
+
 class Garden {
     Garden(Gardener joe) {
         joe.setWorkday(new TwelveHourWorkday());
@@ -315,7 +298,7 @@ class GardenTest extends TestCase {
 #+end_src
 
 #+caption: After: Testable and Flexible Design
-#+begin_src java
+#+begin_src typescript
 // Let Guice create the gardener, and have a
 //   provider configure it.
 class Garden {
