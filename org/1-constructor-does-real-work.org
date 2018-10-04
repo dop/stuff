@@ -1,5 +1,5 @@
 #+TITLE: Flaw: Constructor does Real Work
-#+AUTHOR: [[http://jawspeak.com/][Miško Hevery]], Jonathan Wolter, Russ Ruffer
+#+AUTHOR: Miško Hevery, Jonathan Wolter, Russ Ruffer
 #+HTML_HEAD: <link rel="stylesheet" href="style.css" type="text/css">
 #+OPTIONS: num:nil html-style:nil
 
