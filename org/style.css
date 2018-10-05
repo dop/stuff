@@ -2,6 +2,21 @@ body {
   margin: 5em auto;
   width: 800px;
   font-size: 16pt;
-  font-family: Georgia, Times, serif;
+  font-family: Times, serif;
   line-height: 1.4;
+}
+
+code, pre {
+  font-size: 12pt;
+  font-family: Monaco, Menlo, DejaVu Sans Mono, monospace;
+}
+
+.org-src-name {
+  font-size: 12pt;
+}
+
+pre.src {
+  padding: 1em;
+  border: 1px solid #eee;
+  border-radius: 2px;
 }
