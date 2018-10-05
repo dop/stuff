@@ -11,7 +11,7 @@ instantiation or altering collaborators in the test.
 
 | Warning Signs:                                                                                            |
 |-----------------------------------------------------------------------------------------------------------|
-| - new keyword in a constructor or at field declaration                                                    |
+| - =new= keyword in a constructor or at field declaration                                                  |
 | - Static method calls in a constructor or at field declaration                                            |
 | - Anything more than field assignment in constructors                                                     |
 | - Object not fully initialized after the constructor finishes (watch out for initialize methods)          |
@@ -153,30 +153,23 @@ pass them in. (Don't look for things! Ask for things!)
 If there is initialization that needs to happen with the objects that
 get passed in, you have three options:
 
-1. Best Approach using Guice: Use a Provider<YourObject> to create and
-   initialize YourObject‘s constructor arguments. Leave the
-   responsibility of object initialization and graph construction to
-   Guice. This will remove the need to initialize the objects on-the-go.
-   Sometimes you will use Builders or Factories in addition to
-   Providers, then pass in the builders and factories to the
-   constructor.
-2. Best Approach using manual Dependency Injection: Use a Builder, or a
-   Factory, for YourObject‘s constructor arguments. Typically there is
-   one factory for a whole graph of objects, see example below. (So you
-   don't have to worry about having class explosion due to one factory
-   for every class) The responsibility of the factory is to create the
-   object graph and to do no work. (All you should see in the factory is
-   a whole lot of new keywords and passing around of references). The
-   responsibility of the object graph is to do work, and to do no object
-   instantiation (There should be a serious lack of new keywords in
+1. Best Approach: use Dependency Injection framework to create and initialize
+   YourObject constructor arguments. This will remove the need to initialize the
+   objects on-the-go.  Sometimes you will use Builders or Factories in addition
+   to Providers, then pass in the builders and factories to the constructor.
+2. Best Approach using manual Dependency Injection: Use a Builder, or a Factory,
+   for YourObject constructor arguments. Typically there is one factory for a
+   whole graph of objects, see example below. (So you don't have to worry about
+   having class explosion due to one factory for every class) The responsibility
+   of the factory is to create the object graph and to do no work. (All you
+   should see in the factory is a whole lot of new keywords and passing around
+   of references). The responsibility of the object graph is to do work, and to
+   do no object instantiation (There should be a serious lack of new keywords in
    application logic classes).
 3. Only as a Last Resort: Have an init(...) method in your class that
    can be called after construction. Avoid this wherever you can,
    preferring the use of another object who's single responsibility is
-   to configure the parameters for this object. (Often that is a
-   Provider if you are using Guice)
-
- (Also read the code examples below)
+   to configure the parameters for this object.
 
 * Concrete Code Examples Before and After
 :PROPERTIES:
@@ -196,9 +189,6 @@ objects difficult/.
 #+begin_src typescript
 // Basic new operators called directly in the class' constructor. (Forever
 // preventing a seam to create different kitchen and bedroom collaborators).
-class Kitchen {}
-class Bedroom {}
-
 class House {
   private kitchens: Kitchen[] = [new Kitchen()];
   private bedrooms: Bedroom[];
@@ -214,27 +204,6 @@ class House {
 // It not possible to have the house you want!
 it('should have 2 bedrooms', () => {
   const house = new House();
-  expect(house.getNumberOfBedrooms()).toBe(2);
-})
-#+end_src
-
-#+caption: After: Testable and Flexible Design
-#+begin_src typescript
-// Basic new operators called directly in the class' constructor. (Forever
-// preventing a seam to create different kitchen and bedroom collaborators).
-class Bedroom {}
-
-class House {
-  constructor(private kitchens: Kitchen[], private bedrooms: Bedroom[]) {}
-
-  getNumberOfBedrooms() {
-    return this.bedrooms.length;
-  }
-}
-
-// Two bedrooms, excatly as we wanted
-it('should have 2 bedrooms', () => {
-  const house = new House([], [new Bedroom(), new Bedroom()]);
   expect(house.getNumberOfBedrooms()).toBe(2);
 })
 #+end_src
@@ -255,6 +224,23 @@ of objects for testing. See: "[[http://misko.hevery.com/2008/07/08/how-to-think-
   polymorphically replace the behavior of the =Kitchen= or =Bedroom= in the
   =House=.
 
+#+caption: After: Testable and Flexible Design
+#+begin_src typescript
+class House {
+  constructor(private kitchens: Kitchen[], private bedrooms: Bedroom[]) {}
+
+  getNumberOfBedrooms() {
+    return this.bedrooms.length;
+  }
+}
+
+// Two bedrooms, excatly as we wanted
+it('should have 2 bedrooms', () => {
+  const house = new House([], [new Bedroom(), new Bedroom()]);
+  expect(house.getNumberOfBedrooms()).toBe(2);
+})
+#+end_src
+
 If the =Kitchen= is a value object such as: =LinkedList=, =Map=, =User=, =EmailAddress=,
 etc., then we can create them inline as long as the value objects do not
 reference service objects. Service objects are the type most likely that need to
@@ -270,92 +256,58 @@ instantiation or instantiation via static method calls.
 #+begin_src typescript
 // SUT initializes collaborators. This prevents
 //   tests and users of Garden from altering them.
-class Gardener {
-
-}
-
 class Garden {
-    Garden(Gardener joe) {
-        joe.setWorkday(new TwelveHourWorkday());
-        joe.setBoots(
-                     new BootsWithMassiveStaticInitBlock());
-        this.joe = joe;
-    }
-    // ...
-}
-// A test that is very slow, and forced
-//   to run the static init block multiple times.
-class GardenTest extends TestCase {
-    public void testMustUseFullFledgedGardener() {
-        Gardener gardener = new Gardener();
-        Garden garden = new Garden(gardener);
-        new AphidPlague(garden).infect();
-        garden.notifyGardenerSickShrubbery();
-         assertTrue(gardener.isWorking());
-    }
+  constructor(private joe: Gardener) {
+    this.joe.setWorkday(new TwelveHourWorkday());
+    this.joe.setBoots(new BootsWithMassiveStaticInitBlock());
+  }
 }
 
+it('should work in infected garden', () => {
+  Gardener joe = new Gardener();
+  Garden garden = new Garden(joe);
+  new AphidPlague(garden).infect();
+  garden.notifyGardenerSickShrubbery();
+  expect(joe.isWorking()).toBe(true);
+});
 #+end_src
 
-#+caption: After: Testable and Flexible Design
-#+begin_src typescript
-// Let Guice create the gardener, and have a
-//   provider configure it.
-class Garden {
-    Gardener joe;
-    @Inject
-    Garden(Gardener joe) {
-        this.joe = joe;
-    }
-    // ...
-}
-// In the Module configuring Guice.
-@Provides
-Gardener getGardenerJoe(Workday workday,
-                        BootsWithMassiveStaticInitBlock badBoots) {
-    Gardener joe = new Gardener();
-     joe.setWorkday(workday);
-    // Ideally, you'll refactor the static init.
-    joe.setBoots(badBoots);
-    return joe;
-}
-// The new tests run quickly and are not
-//   dependent on the slow
-//   BootsWithMassiveStaticInitBlock
-class GardenTest extends TestCase {
-    public void testUsesGardenerWithDummies() {
-        Gardener gardener = new Gardener();
-        gardener.setWorkday(new OneMinuteWorkday());
-        // Okay to pass in null, b/c not relevant
-        //   in this test.
-        gardener.setBoots(null);
-        Garden garden = new Garden(gardener);
-        new AphidPlague(garden).infect();
-        garden.notifyGardenerSickShrubbery();
-         assertTrue(gardener.isWorking());
-    }
-}
-
-#+end_src
-
-Object graph creation (creating and configuring the Gardener
-collaborator for Garden) is a different responsibility than what the
-Garden should do. When configuration and instantiation is mixed together
+Object graph creation (creating and configuring the =Gardener=
+collaborator for =Garden=) is a different responsibility than what the
+=Garden= should do. When configuration and instantiation is mixed together
 in the constructor, objects become more brittle and tied to concrete
 object graph structures. This makes code harder to modify, and (more or
 less) impossible to test.
 
-- Flaw: The Garden needs a Gardener, but it should not be the
-  responsibility of the Garden to configure the gardener.
-- Flaw: In a unit test for Garden the workday is set specifically in the
+- Flaw: The =Garden= needs a =Gardener=, but it should not be the
+  responsibility of the =Garden= to configure the =Gardener=.
+- Flaw: In a unit test for =Garden= the workday is set specifically in the
   constructor, thus forcing us to have Joe work a 12 hour workday.
   Forced dependencies like this can cause tests to run slow. In unit
   tests, you'll want to pass in a shorter workday.
 - Flaw: You can't change the boots. You will likely want to use a
   test-double for boots to avoid the problems with loading and using
-  BootsWithMassiveStaticInitBlock. (Static initialization blocks are
+  =BootsWithMassiveStaticInitBlock=. (Static initialization blocks are
   often dangerous and troublesome, especially if they interact with
   global state.)
+
+#+caption: After: Testable and Flexible Design
+#+begin_src typescript
+class Garden {
+  constructor(private joe: Gardener) {}
+}
+
+it('should work in infected garden', () => {
+  Gardener gardener = new Gardener();
+  gardener.setWorkday(new OneMinuteWorkday());
+  // Okay to pass in null, b/c not relevant in this test.
+  gardener.setBoots(null);
+  Garden garden = new Garden(gardener);
+  new AphidPlague(garden).infect();
+  garden.notifyGardenerSickShrubbery();
+  expect(gardener.isWorking()).toBe(true);
+});
+#+end_src
 
 Have two objects when you need to have collaborators initialized.
 Initialize them, and then pass them fully initialized into the
@@ -367,61 +319,23 @@ constructor of the class of interest.
 :END:
 
 #+caption: Before: Hard to Test
-#+begin_src java
+#+begin_src typescript
 // Violates the Law of Demeter
 // Brittle because of excessive dependencies
 // Mixes object lookup with assignment
 class AccountView {
-      User user;
-      AccountView() {
-           user = RPCClient.getInstance().getUser();
-          }
+  private user: User;
+  constructor() {
+    this.user = RPCClient.getInstance().getUser();
+  }
 }
 // Hard to test because needs real RPCClient
-class ACcountViewTest extends TestCase {
-    public void testUnfortunatelyWithRealRPC() {
-        AccountView view = new AccountView();
-        // Shucks! We just had to connect to a real
-        //   RPCClient. This test is now slow.
-        // ...
-    }
-}
-
-#+end_src
-
-#+caption: After: Testable and Flexible Design
-#+begin_src java
-class AccountView {
-      User user;
-    @Inject
-      AccountView(User user) {
-            this.user = user;
-    }
-}
-// The User is provided by a GUICE provider
-@Provides
-User getUser(RPCClient rpcClient) {
-    return rpcClient.getUser();
-}
-// RPCClient is also provided, and it is no longer
-//   a JVM Singleton.
-@Provides @Singleton
-RPCClient getRPCClient() {
-    // we removed the JVM Singleton
-    //   and have GUICE manage the scope
-    return new RPCClient();
-}
-// Easy to test with Dependency Injection
-class AccountViewTest extends TestCase {
-    public void testLightweightAndFlexible() {
-        User user = new DummyUser();
-        AccountView view = new AccountView(user);
-        // Easy to test and fast with test-double
-        //   user.
-        // ...
-    }
-}
-
+it('should do something with account view', () => {
+  AccountView view = new AccountView();
+  // Shucks! We just had to connect to a real
+  //   RPCClient. This test is now slow.
+  // ...
+});
 #+end_src
 
 In this example we reach into the global state of an application and get
@@ -442,14 +356,25 @@ of Demeter".
   AccountServlet may need AccountView. Hence in AccountServlet we will
   have to successfully navigate the constructor.
 
+#+caption: After: Testable and Flexible Design
+#+begin_src typescript
+class AccountView {
+  constructor(private user: User) {}
+}
+
+it('should do something with account view', () => {
+  let user = new DummyUser();
+  let view = new AccountView(user);
+  // Easy to test and fast with test-double
+  //   user.
+  // ...
+});
+#+end_src
+
 In the improved code only what is directly needed is passed in: the User
 collaborator. For tests, all you need to create is a (real or
 test-double) User object. This makes for a more flexible design /and/
 enables better testability.
-
-We use Guice to provide for us a User, that comes from the RPCClient. In
-unit tests we won't use Guice, but directly create the User and
-AccountView.
 
 ** Problem: Creating Unneeded Third Party Objects in Constructor.
 :PROPERTIES:
@@ -457,67 +382,28 @@ AccountView.
 :END:
 
 #+caption: Before: Hard to Test
-#+begin_src java
+#+begin_src typescript
 // Creating unneeded third party objects,
 //   Mixing object construction with logic, &
 //   "new" keyword removes a seam for other
 //   EngineFactory's to be used in tests.
 //   Also ties you to the (slow) file system.
 class Car {
-    Engine engine;
-    Car(File file) {
-        String model = readEngineModel(file);
-        engine = new EngineFactory().create(model);
-    }
-    // ...
-}
-// The test exposes the brittleness of the Car
-class CarTest extends TestCase {
-    public void testNoSeamForFakeEngine() {
-        // Aggh! I hate using files in unit tests
-        File file = new File("engine.config");
-        Car car = new Car(file);
-        // I want to test with a fake engine
-        //   but I can't since the EngineFactory
-        //   only knows how to make real engines.
-    }
+  private engine?: Engine;
+  constructor(File file) {
+    let model = readEngineModel(file);
+    this.engine = new EngineFactory().create(model);
+  }
 }
 
-#+end_src
-
-#+caption: After: Testable and Flexible Design
-#+begin_src java
-// Asks for precisely what it needs
-class Car {
-    Engine engine;
-    @Inject
-    Car(Engine engine) {
-        this.engine = engine;
-    }
-    // ...
-}
-// Have a provider in the Module
-//   to give you the Engine
-@Provides
-Engine getEngine(
-                 EngineFactory engineFactory,
-                 @EngineModel String model) {
-    //
-    return engineFactory
-        .create(model);
-}
-// Elsewhere there is a provider to
-//   get the factory and model
-// Now we can see a flexible, injectible design
-class CarTest extends TestCase {
-    public void testShowsWeHaveCleanDesign() {
-        Engine fakeEngine = new FakeEngine();
-        Car car = new Car(fakeEngine);
-        // Now testing is easy, with the car taking
-        //   exactly what it needs.
-    }
-}
-
+it('should have an engine', () => {
+  // Aggh! I hate using files in unit tests
+  let file = new File('engine.config');
+  let car = new Car(file);
+  // I want to test with a fake engine
+  //   but I can't since the EngineFactory
+  //   only knows how to make real engines.
+});
 #+end_src
 
 Linguistically, it does not make sense to require a Car to get an
@@ -547,13 +433,28 @@ needed.
 - Flaw: Every test will need a access a file when the Car constructor is
   called. This is slow, and prevents test from being true unit tests.
 
-Remove these third party objects, and replace the work in the
-constructor with simple variable assignment. Assign pre-configured
-variables into fields in the constructor. Have another object (a
-factory, builder, or Guice providers) do the actual construction of the
-constructor's parameters. Split off of your primary objects the
-responsibility of object graph construction and you will have a more
-flexible and maintainable design.
+Remove these third party objects, and replace the work in the constructor with
+simple variable assignment. Assign pre-configured variables into fields in the
+constructor. Have another object (a factory, builder) do the actual construction
+of the constructor's parameters. Split off of your primary objects the
+responsibility of object graph construction and you will have a more flexible
+and maintainable design.
+
+#+caption: After: Testable and Flexible Design
+#+begin_src typescript
+// Asks for precisely what it needs
+class Car {
+  constructor(private engine: Engine) {
+  }
+}
+
+it('should have an engine', () => {
+  let fakeEngine = new FakeEngine();
+  let car = new Car(fakeEngine);
+  // Now testing is easy, with the car taking
+  //   exactly what it needs.
+});
+#+end_src
 
 ** Problem: Directly Reading Flag Values in Constructor
 :PROPERTIES:
@@ -561,83 +462,59 @@ flexible and maintainable design.
 :END:
 
 #+caption: Before: Hard to Test
-#+begin_src java
+#+begin_src typescript
 // Reading flag values to create collaborators
 class PingServer {
-    Socket socket;
-    PingServer() {
-        socket = new Socket(FLAG_PORT.get());
-    }
-    // ...
+  private socket?: Socket;
+  constructor() {
+    socket = new Socket(FLAG_PORT.get());
+  }
 }
+
 // The test is brittle and tied directly to a
 //   Flag's static method (global state).
-class PingServerTest extends TestCase {
-    public void testWithDefaultPort() {
-        PingServer server = new PingServer();
-        // This looks innocent enough, but really
-        //   it forces you to mutate global state
-        //   (the flag) to run on another port.
-    }
-}
-
-#+end_src
-
-#+caption: After: Testable and Flexible Design
-#+begin_src java
-// Best solution (although you also could pass
-//   in an int of the Socket's port to use)
-class PingServer {
-    Socket socket;
-    @Inject
-    PingServer(Socket socket) {
-        this.socket = socket;
-    }
-}
-// This uses the FlagBinder to bind Flags to
-// the @Named annotation values. Somewhere in
-// a Module's configure method:
-new FlagBinder(
-               binder().bind(FlagsClassX.class));
-// And the method provider for the Socket
-@Provides
-Socket getSocket(@Named("port") int port) {
-    // The responsibility of this provider is
-    //   to give a fully configured Socket
-    //   which may involve more than just "new"
-    return new Socket(port);
-}
-// The revised code is flexible, and easily
-//   tested (without any global state).
-class PingServerTest extends TestCase {
-    public void testWithNewPort() {
-        int customPort = 1234;
-        Socket socket = new Socket(customPort);
-        PingServer server = new PingServer(socket);
-        // ...
-    }
-}
-
+it('should run on some port', () => {
+  let server = new PingServer();
+  // This looks innocent enough, but really
+  //   it forces you to mutate global state
+  //   (the flag) to run on another port.
+});
 #+end_src
 
 What looks like a simple no argument constructor actually has a lot of
 dependencies. Once again the API is lying to you, pretending it is easy
 to create, but actually PingServer is brittle and tied to global state.
 
-- Flaw: In your test you will have to rely on global variable FLAG_PORT
+- Flaw: In your test you will have to rely on global variable =FLAG_PORT=
   in order to instantiate the class. This will make your tests flaky as
   the order of tests matters.
 - Flaw: Depending on a statically accessed flag value prevents you from
   running tests in parallel. Because parallel running test could change
   the flag value at the same time, causing failures.
 - Flaw: If the socket needed additional configuration (i.e. calling
-  setSoTimeout()), that can't happen because the object construction
-  happens in the wrong place. Socket is created inside the PingServer,
+  =setSoTimeout()=), that can't happen because the object construction
+  happens in the wrong place. =Socket= is created inside the =PingServer=,
   which is backwards. It needs to happen externally, in something whose
-  sole responsibility is object graph construction --- i.e. a Guice
-  provider.
+  sole responsibility is object graph construction.
 
-PingServer ultimately needs a socket not a port number. By passing in
+#+caption: After: Testable and Flexible Design
+#+begin_src typescript
+// Best solution (although you also could pass
+//   in an int of the Socket's port to use)
+class PingServer {
+  constructor(private socket: Socket) {}
+}
+
+// The revised code is flexible, and easily
+//   tested (without any global state).
+it('should run on given port', () => {
+  let customPort = 1234;
+  let socket = new Socket(customPort);
+  let server = new PingServer(socket);
+});
+#+end_src
+
+=PingServer= ultimately needs a socket not a port number. By passing in
 the port number we will have to tests with real sockets/threads. By
 passing in a socket we can create a mock socket in tests and test the
 class without any real sockets / threads. Explicitly passing in the port
@@ -650,104 +527,59 @@ testing. Even better is passing in the socket that is ultimately needed.
 :END:
 
 #+caption: Before: Hard to Test
-#+begin_src java
+#+begin_src typescript
 // Branching on flag values to determine state.
 class CurlingTeamMember {
-    Jersey jersey;
-    CurlingTeamMember() {
-        if (FLAG_isSuedeJersey.get()) {
-            jersey = new SuedeJersey();
-        } else {
-            jersey = new NylonJersey();
-        }
+  private jersey?: Jersey;
+  constructor() {
+    if (FLAG_isSuedeJersey.get()) {
+      jersey = new SuedeJersey();
+    } else {
+      jersey = new NylonJersey();
     }
+  }
 }
 // Testing the CurlingTeamMember is difficult.
 //   In fact you can't use any Jersey other
 //   than the SuedeJersey or NylonJersey.
-class CurlingTeamMemberTest extends TestCase {
-    public void testImpossibleToChangeJersey() {
-        //  You are forced to use global state.
-         // ... Set the flag how you want it
-        CurlingTeamMember russ =
-            new CurlingTeamMember();
-        // Tests are locked in to using one
-        //   of the two jerseys above.
-         }
-}
-
+it('should ...', () => {
+  //  You are forced to use global state.
+  // ... Set the flag how you want it
+  CurlingTeamMember russ = new CurlingTeamMember();
+  // Tests are locked in to using one of the two jerseys above.
+});
 #+end_src
-
-#+caption: After: Testable and Flexible Design
-#+begin_src java
-// We moved the responsibility of the selection
-//   of Jerseys into a provider.
-class CurlingTeamMember {
-    Jersey jersey;
-    // Recommended, because responsibilities of
-    // Construction/Initialization and whatever
-    // this object does outside it's constructor
-    // have been separated.
-    @Inject
-    CurlingTeamMember(Jersey jersey) {
-        this.jersey = jersey;
-    }
-}
-// Then use the FlagBinder to bind flags to
-//   injectable values. (Inside your Module's
-//   configure method)
-new FlagBinder(
-               binder().bind(FlagsClassX.class));
-// By asking for Provider<SuedeJersey>
-//   instead of calling new SuedeJersey
-//   you leave the SuedeJersey to be free
-//   to ask for its dependencies.
-@Provides
-Jersey getJersey(
-                 Provider<SuedeJersey> suedeJerseyProvider,
-                 Provider<NylonJersey> nylonJerseyProvider,
-                 @Named('isSuedeJersey') Boolean suede) {
-    if (suede) {
-         return suedeJerseyProvider.get();
-    } else {
-        return nylonJerseyProvider.get();
-    }
-}
-// The code now uses a flexible alternataive:
-//   dependency injection.
-class CurlingTeamMemberTest extends TestCase {
-    public void testWithAnyJersey() {
-        // No need to touch the flag
-        Jersey jersey = new LightweightJersey();
-        CurlingTeamMember russ =
-            new CurlingTeamMember(jersey);
-        // Tests are free to use any jersey.
-         }
-}
-
-#+end_src
-
-Guice has something called the FlagBinder which lets you--at a very low
-cost--remove flag references and replace them with injected values.
-Flags are pervasively used to change runtime parameters, yet we don't
-have to directly read the flags for their global state.
 
 - Flaw: Directly reading flags is reaching out into global state to get
   a value. This is undesirable because global state is not isolated:
   previous tests could set it to a different value, or other threads
   could mutate it unexpectedly.
-- Flaw: Directly constructing the differing types of Jersey, depending
-  on a flag's value. Your tests that instantiate a CurlingTeamMember
-  have no seam to inject a different Jersey collaborator for testing.
-- Flaw: The responsibility of the CurlingTeamMember is broad: both
-  whatever the core purpose of the class, and now also Jersey
+- Flaw: Directly constructing the differing types of =Jersey=, depending
+  on a flag's value. Your tests that instantiate a =CurlingTeamMember=
+  have no seam to inject a different =Jersey= collaborator for testing.
+- Flaw: The responsibility of the =CurlingTeamMember= is broad: both
+  whatever the core purpose of the class, and now also =Jersey=
   configuration. Passing in a preconfigured Jersey object instead is
   preferred. Another object can have the responsibility of configuring
-  the Jersey.
+  the =Jersey=.
 
-Use the FlagBinder (is a class you write which knows how to bind command
-line flags to injectable parameters) to attach all the flags from a
-class into Guice's scope of what is injectable.
+#+caption: After: Testable and Flexible Design
+#+begin_src typescript
+// We moved the responsibility of the selection
+//   of Jerseys into a provider.
+class CurlingTeamMember {
+  constructor(private jersey: Jersey) {
+    this.jersey = jersey;
+  }
+}
+
+it('...', () => {
+  let jersey = new LightweightJersey();
+  let russ = new CurlingTeamMember(jersey);
+  // No need to touch the flag
+  // Tests are free to use any jersey.
+});
+#+end_src
 
 ** Problem: Moving the Constructor's "work" into an Initialize Method
 :PROPERTIES:
@@ -755,134 +587,89 @@ class into Guice's scope of what is injectable.
 :END:
 
 #+caption: Before: Hard to Test
-#+begin_src java
+#+begin_src typescript
 // With statics, singletons, and a tricky
 //   initialize method this class is brittle.
 class VisualVoicemail {
-    User user;
-    List<Call> calls;
+  private user: User;
+  private calls: Call[];
 
-    @Inject
-    VisualVoicemail(User user) {
-        // Look at me, aren't you proud? I've got
-        // an easy constructor, and I use Guice
-        this.user = user;
-    }
+  constructor(User user) {
+    // Look at me, aren't you proud? I've got an easy constructor.
+    this.user = user;
+    this.calls = [];
+  }
 
-    initialize() {
-        Server.readConfigFromFile();
-        Server server = Server.getSingleton();
-        calls = server.getCallsFor(user);
-    }
+  initialize() {
+    Server.readConfigFromFile();
+    let server = Server.getSingleton();
+    this.calls = server.getCallsFor(this.user);
+  }
 
-    // This was tricky, but I think I figured
-    // out how to make this testable!
-    @VisibleForTesting
-    void setCalls(List<Call> calls) {
-        this.calls = calls;
-    }
+  // This was tricky, but I think I figured
+  // out how to make this testable!
+  setCalls(calls: Call[]) {
+    this.calls = calls;
+  }
 
-    // ...
+  // ...
 }
 
 // Brittle code exposed through the test
-class VisualVoicemailTest extends TestCase {
+it('exposes brittle design', () => {
+  let dummyUser = new DummyUser();
+  let voicemail = new VisualVoicemail(dummyUser);
+  voicemail.setCalls(buildListOfTestCalls());
 
-    public void testExposesBrittleDesign() {
-        User dummyUser = new DummyUser();
-        VisualVoicemail voicemail =
-            new VisualVoicemail(dummyUser);
-        voicemail.setCalls(buildListOfTestCalls());
+  // Technically this can be tested, as long
+  //   as you don't need the Server to have
+  //   read the config file. But testing
+  //   without testing the initialize()
+  //   excludes important behavior.
 
-        // Technically this can be tested, as long
-        //   as you don't need the Server to have
-        //   read the config file. But testing
-        //   without testing the initialize()
-        //   excludes important behavior.
-
-        // Also, the code is brittle and hard to
-        //   later on add new functionalities.
-    }
-}
-#+end_src
-
-#+caption: After: Testable and Flexible Design
-#+begin_src java
-// Using DI and Guice, this is a
-//   superior design.
-class VisualVoicemail {
-    List<Call> calls;
-
-    VisualVoicemail(List<Call> calls) {
-        this.calls = calls;
-    }
-}
-
-// You'll need a provider to get the calls
-@Provides
-List<Call> getCalls(Server server,
-                    @RequestScoped User user) {
-    return server.getCallsFor(user);
-}
-
-// And a provider for the Server. Guice will
-//  let you get rid of the JVM Singleton too.
-@Provides @Singleton
-Server getServer(ServerConfig config) {
-    return new Server(config);
-}
-
-@Provides @Singleton
-ServerConfig getServerConfig(
-                             @Named("serverConfigPath") path) {
-    return new ServerConfig(new File(path));
-}
-
-// Somewhere, in your Module's configure()
-//   use the FlagBinder.
-new FlagBinder(binder().bind(
-                             FlagClassX.class))
-
-// Dependency Injection exposes your
-//   dependencies and allows for seams to
-//   inject different collaborators.
-
-    class VisualVoicemailTest extends TestCase {
-
-    VisualVoicemail voicemail =
-        new VisualVoicemail(
-                            buildListOfTestCalls());
-
-    // ... now you can test this however you want.
-}
+  // Also, the code is brittle and hard to
+  //   later on add new functionalities.
+});
 #+end_src
 
 Moving the "work" into an initialize method is not the solution. You
 need to decouple your objects into single responsibilities. (Where one
 single responsibility is to provide a fully-configured object graph).
 
-- Flaw: At first glance it may look like Guice is effectively used. For
-  testing the VisualVoicemail object is very easy to construct. However
-  the code is still brittle and tied to several Static initialization
+- Flaw: At first glance it may look like DI is used effectively. For
+  testing the =VisualVoicemail= object is very easy to construct. However
+  the code is still brittle and tied to several static initialization
   calls.
 - Flaw: The initialize method is a glaring sign that this object has too
-  many responsibilities: whatever a VisualVoicemail needs to do, and
+  many responsibilities: whatever a =VisualVoicemail= needs to do, and
   initializing its dependencies. Dependency initialization should happen
   in another class, passing /all/ of the ready-to-be-used objects into
   the constructor.
-- Flaw: The Server.readConfigFromFile() method is non interceptable when
+- Flaw: The =Server.readConfigFromFile()= method is non interceptable when
   in a test, if you want to call the initialize method.
-- Flaw: The Server is non-initializable in a test. If you want to use
+- Flaw: The =Server= is non-initializable in a test. If you want to use
   it, you're forced to get it from the global singleton state. If two
   tests run in parallel, or a previous test initializes the Server
   differently, global state will bite you.
-- Flaw: Usually, @VisibleForTesting annotation is a smell that the class
-  was not written to be easily tested. And even though it will let you
-  set the list of calls, it is only a /hack/ to get around the root
-  problem in the initialize() method.
 
-Solving this flaw, like so many others, involves removing JVM enforced
-global state and using Dependency Injection.
+#+caption: After: Testable and Flexible Design
+#+begin_src typescript
+// Using DI and Guice, this is a
+//   superior design.
+class VisualVoicemail {
+  constructor(private calls: Call[]) {
+  }
+}
+
+// Dependency Injection exposes your
+//   dependencies and allows for seams to
+//   inject different collaborators.
+it('just works', () => {
+  let voicemail = new VisualVoicemail(buildListOfTestCalls());
+});
+#+end_src
+
+All work is pushed to other parts of code.
 
 ** Problem: Having Multiple Constructors, where one is Just for Testing
 :PROPERTIES:
@@ -890,140 +677,82 @@ global state and using Dependency Injection.
 :END:
 
 #+caption: Before: Hard to Test
-#+begin_src java
+#+begin_src typescript
 // Half way easy to construct. The other half
 //   expensive to construct. And for collaborators
 //   that use the expensive constructor - they
 //   become expensive as well.
 class VideoPlaylistIndex {
-    VideoRepository repo;
-    @VisibleForTesting
-    VideoPlaylistIndex(
-                       VideoRepository repo) {
-        // Look at me, aren't you proud?
-        // An easy constructor for testing!
-        this.repo = repo;
-         }
-    VideoPlaylistIndex() {
-        this.repo = new FullLibraryIndex();
-    }
-    // ...
+  private repo: VideoRepository;
+
+  constructor(repo?: VideoRepository) {
+    // Look at me, aren't you proud?
+    // An easy constructor for testing!
+    this.repo = repo || new FullLibraryIndex();
+  }
 }
+
 // And a collaborator, that is expensive to build
 //   because the hard coded index construction.
 class PlaylistGenerator {
-    VideoPlaylistIndex index =
-        new VideoPlaylistIndex();
-    Playlist buildPlaylist(Query q) {
-        return index.search(q);
-         }
+  private index: VideoPlaylistIndex = new VideoPlaylistIndex();
+
+  buildPlaylist(q: Query): Playlist {
+    return this.index.search(q);
+  }
 }
+
 // Testing the VideoPlaylistIndex is easy,
 //  but testing the PlaylistGenerator is not!
-class PlaylistGeneratorTest extends TestCase {
-    public void testBadDesignHasNoSeams() {
-        PlaylistGenerator generator =
-            new PlaylistGenerator();
-        // Doh! Now we're tied to the
-        //   VideoPlaylistIndex with the bulky
-        //   FullLibraryIndex that will make slow
-        //   tests.
-    }
-}
-
+it('has Bad design - no seams', () => {
+  let generator = new PlaylistGenerator();
+});
 #+end_src
 
+Optionally initialized constructor arguments, that are passed only in testing,
+is a hint that parts of your code will still be hard to test. =VideoPlaylistIndex=
+is easy to test (you can pass in a test-double =VideoRepository=). However,
+whichever dependant objects which use the no-arg constructor will be hard to
+test.
+
+- Flaw: =PlaylistGenerator= is hard to test, because it takes advantage of
+  the no-arg constructor for =VideoPlaylistIndex=, which is hard coded to
+  using the =FullLibraryIndex=.You wouldn't really want to test the
+  =FullLibraryIndex= in a test of the =PlaylistGenerator=, but you are
+  forced to.
+- Flaw: Usually, the code written to be used in tests only is a sign that class
+  was not written to be easily tested. And even though it will let you set the
+  repository object, it is only a /hack/ to get around the root problem.
+
 #+caption: After: Testable and Flexible Design
-#+begin_src java
+#+begin_src typescript
 // Easy to construct, and no other objects are
 //   harmed by using an expensive constructor.
 class VideoPlaylistIndex {
-    VideoRepository repo;
-    VideoPlaylistIndex(
-                       VideoRepository repo) {
-        // One constructor to rule them all
-        this.repo = repo;
-         }
+  constructor(private repo: VideoRepository) {
+  }
 }
-// And a collaborator, that is now easy to
-//   build.
+
 class PlaylistGenerator {
-    VideoPlaylistIndex index;
-    // pass in with manual DI
-    PlaylistGenerator(
-                      VideoPlaylistIndex index) {
-        this.index = index;
-    }
-    Playlist buildPlaylist(Query q) {
-        return index.search(q);
-         }
+  VideoPlaylistIndex index;
+
+  constructor(private index: VideoPlaylistIndex) {
+  }
+
+  buildPlaylist(q: Query): Playlist {
+    return this.index.search(q);
+  }
 }
 // Easy to test when Dependency Injection
 //   is used everywhere.
-class PlaylistGeneratorTest extends TestCase {
-    public void testFlexibleDesignWithDI() {
-        VideoPlaylistIndex fakeIndex =
-            new InMemoryVideoPlaylistIndex()
-            PlaylistGenerator generator =
-            new PlaylistGenerator(fakeIndex);
-        // Success! The generator does not care
-        //   about the index used during testing
-        //   so a fakeIndex is passed in.
-    }
-}
-
+it('has flexible design', () => {
+  let fakeIndex = new InMemoryVideoPlaylistIndex()
+  let generator = new PlaylistGenerator(fakeIndex);
+  // Success! The generator does not care
+  //   about the index used during testing
+  //   so a fakeIndex is passed in.
+});
 #+end_src
 
-Multiple constructors, with some only used for testing, is a hint that
-parts of your code will still be hard to test. On the left, the
-VideoPlaylistIndex is easy to test (you can pass in a test-double
-VideoRepository). However, whichever dependant objects which use the
-no-arg constructor will be hard to test.
-
-- Flaw: PlaylistGenerator is hard to test, because it takes advantage of
-  the no-arg constructor for VideoPlaylistIndex, which is hard coded to
-  using the FullLibraryIndex.You wouldn't really want to test the
-  FullLibraryIndex in a test of the PlaylistGenerator, but you are
-  forced to.
-- Flaw: Usually, the @VisibleForTesting annotation is a smell that the
-  class was not written to be easily tested. And even though it will let
-  you set the list of calls, it is only a /hack/ to get around the root
-  problem.
-
-Ideally the PlaylistGenerator asks for the VideoPlaylistIndex in its
-constructor instead of creating its dependency directly. Once
-PlaylistGenerator asks for its dependencies no one calls the no argument
-VideoPlaylistIndex constructor and we are free to delete it. We don't
-usually need multiple constructors.\\
-
-* Frequently Asked Questions
-:PROPERTIES:
-:CUSTOM_ID: frequently-asked-questions
-:END:
-
-Q1: Okay, so I think I get it. I'll /only/ do assignment in the
-constructor, and then I'll have an init() method or init(...) to do all
-the work that used to be in the constructor. Does that sound okay?
-A: We discourage this, see the code example above.
-
-Q2: What about multiple constructors? Can I have one simple to
-construct, and the other with lots of work? I'll only use the easy one
-in my tests. I'll even mark it @VisibleForTesting. Okay?
-A: We discourage this, see the code example above.
-
-Q3: Can I create named constructors as additional constructors which may
-do work? I'll have a simple assignment to fields only constructor to use
-for my tests.
-A: Someone actually ask this and we'll elaborate.
-
-Q4: I keep hearing you guys talk about creating "Factories" and these
-objects whose responsibility is exclusively construction of object
-graphs. But seriously, that's too many objects, and too much for such a
-simple thing.
-A: Typically there is one factory for a whole graph of objects, see
-[[http://code.google.com/p/unit-test-teaching-examples/source/browse/trunk/src/di/webserver/ServerBuilder.java?r=6][example]].
-So you don't have to worry about having class explosion due to one
-factory per class. The responsibility of the factory is to create the
-object graph and to do no work (All you should see is a whole lot of new
-keywords and passing around of references). The responsibility of the
-object graph is to do work, and to do no object instantiation.
+Ideally the =PlaylistGenerator= asks for the =VideoPlaylistIndex= in its
+constructor instead of creating its dependency directly.
