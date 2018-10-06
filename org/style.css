@@ -1,14 +1,23 @@
 body {
-  margin: 5em auto;
-  width: 800px;
+  margin: 10em auto 1em;
+  max-width: 800px;
+  padding: 0 1em;
   font-size: 16pt;
   font-family: Times, serif;
   line-height: 1.4;
 }
 
 code, pre {
-  font-size: 12pt;
+  font-size: 10pt;
   font-family: Monaco, Menlo, DejaVu Sans Mono, monospace;
+}
+
+.title {
+  margin-bottom: 3em;
+}
+
+p {
+  text-align: justify;
 }
 
 .org-src-name {

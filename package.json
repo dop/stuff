@@ -1,0 +1,26 @@
+{
+  "name": "testable-code",
+  "version": "0.0.0",
+  "description": "",
+  "dependencies": {
+    "node-fetch": "^2.2.0"
+  },
+  "devDependencies": {
+    "@types/node": "^10.11.4",
+    "proxyquire": "^2.1.0",
+    "tap-spec": "^5.0.0",
+    "tape": "^4.9.1",
+    "ts-node": "^7.0.1",
+    "typescript": "^3.1.1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/dop/stuff.git"
+  },
+  "author": "Donatas Petrauskas",
+  "license": "ISC",
+  "bugs": {
+    "url": "https://github.com/dop/stuff/issues"
+  },
+  "homepage": "https://github.com/dop/stuff#readme"
+}

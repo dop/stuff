@@ -1,0 +1,371 @@
+#+TITLE: Writing Testable Code: TypeScript and JavaScript Edition
+#+AUTHOR: Donatas Petrauskas
+#+OPTIONS: toc:nil num:nil
+#+HTML_HEAD: <link rel="stylesheet" href="org/style.css" type="text/css">
+
+* Preface
+
+# Why did I write this article?
+
+I spend a lot of time writing tests and learning about software design in that
+process. I usually learn from my own mistakes, because I find it hard to
+understand abstract ideas unless I see concrete examples. But from time to time
+I would find some article or video that resonates and I think is worth sharing
+with others. In this post I'd like to summarize and discuss "Guide: Writing
+Testable Code"[fn:2] from Miško Hevery of Angular fame.
+
+The reason why I actually spent reading this pretty long document and watched
+Google Tech Talks on testable code[fn:1] is that my career as front-end
+developer started with Angular about 5 years ago. The great thing with Angular
+of that time was that it introduced architecture that made it hard not to write
+testable code. It took me a few years to appreciate what angular offered and to
+really grasp it's potential, because I lacked understanding of a guiding
+principles laid out in Miško's article and tech talks on testable code. Once
+I understood those simple rules, it became clear what constitutes testable
+code. It didn't become easy to write, but it became a lot clearer how to
+structure it.
+
+# What is my goal with this article?
+
+My hope with this article is to channel Miško's ideas and give you, dear reader,
+cognitive tools for recognizing untestable code.
+
+/Note/: In this article I will be using TypeScript or JavaScript for examples, but
+rules are universal and can be applied to other languages. Even purely
+functional ones. But to be fair, purely functional languages, like Elm, makes it
+really really hard to write untestable code.
+
+* About "Guide: Writing Testable Code"
+
+"Guide: Writing Testable Code" was written as internal document at Google
+targeting Java code. Many of given examples are very much tied to Java and
+Dependency Injection framework Guice. But the underlying ideas are applicable to
+TypeScript or JavaScript nonetheless.
+
+Guide consists of 4 parts (flaws):
+1. Constructor does Real Work
+2. Digging into Collaborators
+3. Brittle Global State & Singletons
+4. Class Does Too Much
+
+Parts 2 to 4 is kind of obvious, but we will go through them anyway. While part
+1 is definitely a common sense one, I don't think I ever saw it mentioned and
+pointed out so clearly before. Making your constructors dumb is very important
+for objects to be testable. Moreover, it also has this nice consequence of
+forcing your app or module to have clearly separated initialization and
+execution phases.
+
+** Digging into Collaborators and breaking the Law of Demeter by wrecking a train
+
+This one is very easy to spot. For example, if we see a second level access of
+property in your code like this
+
+#+BEGIN_SRC typescript
+this.commentsRepository.getById(x).getUser()
+#+END_SRC
+
+we have a problem. It will become clear when writing a test for it. Or when
+=Comment= interface changes by renaming =getUser= to =getAuthor= and it requires a
+change in many places instead of in =CommentsRepository= only.
+
+While spotting this flaw is easy, fixing it might be not so straightforward. We
+must think before we act and ask as many questions as we can. Do we really need
+=CommentsRepository= in a given context? Maybe =Comment= should have been passed
+directly?
+
+Knowing all that, let's see hypothetical blog example.
+
+# TODO: example
+
+** Global state
+Global state is sneaky. It hides under multiple names: mutable variables, static
+methods, singleton objects, and any dependencies that are not passed as
+arguments. Global state is infectious. Single instance of it in small module
+will corrupt all of your application.
+
+I guess the main takeaway is that global state might not be obvious. Singleton
+pattern is well spread practice, so how come it is bad? Well, if there is a need
+to test or try small portion of code in a REPL, it will become clear how bad it
+actually is.
+
+# TODO: examples about mutable variables, static methods, singleton objects,
+# dependency not passed as argument.
+
+#+CAPTION: Cache module.
+#+BEGIN_SRC javascript :tangle "src/global-state/bad/cache.js"
+const _cache = {};
+
+function set(key, value) {
+  return _cache[key] = value;
+}
+
+function get(key) {
+  return _cache[key];
+}
+
+module.exports = {
+  set,
+  get,
+};
+#+END_SRC
+
+#+CAPTION: Utility to fetch posts.
+#+BEGIN_SRC javascript :tangle "src/global-state/bad/fetch-posts.js"
+const fetch = require('node-fetch');
+const cache = require('./cache');
+
+const BASE_URL = 'http://localhost:8080';
+
+async function fetchPosts(since) {
+  const timestamp = since.getTime();
+  const KEY = 'posts_since_' + timestamp;
+  let posts = cache.get(KEY);
+  if (posts == null) {
+    const response = await fetch(BASE_URL + '/posts?since=' + timestamp);
+    if (response.status === 200) {
+      posts = await response.json();
+      cache.set(KEY, posts);
+    } else {
+      return {error: 'Cannot fetch posts'};
+    }
+  }
+  return {result: posts};
+}
+
+module.exports = {
+  fetchPosts,
+};
+#+END_SRC
+
+#+CAPTION: Complicated tests.
+#+BEGIN_SRC javascript :tangle "src/global-state/bad/fetch-posts.test.js"
+const test = require('tape');
+const proxyquire = require('proxyquire');
+
+test('fetchPosts()', async (assert) => {
+  const expectedPosts = [1, 2, 3];
+  const expectedError = 'Cannot fetch posts';
+  let fetchPostsModule = proxyquire('./fetch-posts', {
+    'node-fetch': (url) =>
+      Promise.resolve({status: 200, json: () => Promise.resolve(expectedPosts)})
+  });
+
+  assert.deepEqual(
+    await fetchPostsModule.fetchPosts(new Date()),
+    {result: expectedPosts},
+    'successfully fetches posts'
+  );
+
+  fetchPostsModule = proxyquire('./fetch-posts', {
+    'node-fetch': (url) => Promise.resolve({status: 500})
+  });
+
+  assert.deepEqual(
+    await fetchPostsModule.fetchPosts(new Date()),
+    {error: expectedError},
+    'returns empty array and error on failure'
+  );
+
+  assert.end();
+});
+#+END_SRC
+
+Great success!?
+
+#+BEGIN_SRC sh :exports results :results output
+(node src/global-state/bad/fetch-posts.test.js | ./node_modules/.bin/tap-spec) 2>&1
+true
+#+END_SRC
+
+#+RESULTS:
+#+begin_example
+
+  fetchPosts()
+
+    ✔ successfully fetches posts
+    ✔ returns empty array and error on failure
+
+
+  total:     2
+  passing:   2
+  duration:  25ms
+
+
+#+end_example
+
+Not really. Even though tests have passed, we had to use proxyquire[fn:3] to tap
+into module system and override dependencies. This a neat trick, but ultimately
+it's a sign of global state issue. Modules are singletons, they're run only
+once. Even though it's pretty common to see such code in a wild, it's not
+testable or REPL friendly.
+
+There is another catch -- our tests are only accidentally successful. If they
+would run fast enough to produce the same timestamp, we would get data served
+from the cache, which is a singleton object for whole application.
+
+What would testable code look like?
+
+First, cache module exposes a function to create one.
+
+#+CAPTION: Cache module.
+#+BEGIN_SRC javascript :tangle "src/global-state/good/cache.js"
+function Cache() {
+  const store = {};
+
+  function set(key, value) {
+    return store[key] = value;
+  }
+
+  function get(key) {
+    return store[key];
+  }
+
+  return {
+    set,
+    get,
+  };
+}
+
+module.exports = Cache;
+#+END_SRC
+
+The same goes for utility to fetch posts. It's a repository object now, that can
+be configured with all it's dependencies.
+
+#+CAPTION: Posts repository object.
+#+BEGIN_SRC javascript :tangle "src/global-state/good/posts-repo.js"
+function PostsRepo(BASE_URL, fetch, cache) {
+  async function query(since) {
+    const timestamp = since.getTime();
+    const KEY = 'posts_since_' + timestamp;
+    let posts = cache.get(KEY);
+    if (posts == null) {
+      const response = await fetch(BASE_URL + '/posts?since=' + timestamp);
+      if (response.status === 200) {
+        posts = await response.json();
+        cache.set(KEY, posts);
+      } else {
+        return {error: 'Cannot fetch posts'};
+      }
+    }
+    return {result: posts};
+  }
+
+  return {
+    query,
+  }
+}
+
+module.exports = PostsRepo;
+#+END_SRC
+
+As a result, we no longer need proxyquire. It's also painfully clear, that we
+have a cache, and we should be careful with it.
+
+#+CAPTION: Complicated tests.
+#+BEGIN_SRC javascript :tangle "src/global-state/good/posts-repo.test.js"
+const test = require('tape');
+
+const Cache = require('./cache');
+const PostsRepo = require('./posts-repo');
+
+test('PostsRepo', (assert) => {
+  function newPostsRepo(fetch) {
+    return PostsRepo('/', fetch, Cache());
+  }
+
+  assert.test('fetch()', async () => {
+    const expectedPosts = [1, 2, 3];
+    const okFetch = () => Promise.resolve({
+      status: 200,
+      json: () => expectedPosts
+    });
+    assert.deepEqual(
+      await newPostsRepo(okFetch).query(new Date()),
+      {result: expectedPosts},
+      'successfully fetches posts'
+    );
+
+    const failFetch = () => Promise.resolve({status: 500});
+    assert.deepEqual(
+      await newPostsRepo(failFetch).query(new Date()),
+      {error: 'Cannot fetch posts'},
+      'returns empty array and error on failure'
+    );
+
+    assert.end();
+  });
+});
+#+END_SRC
+
+As a nice consequence of ditching proxyquire, our tests run twice as fast.
+
+#+BEGIN_SRC sh :exports results :results output
+(node src/global-state/good/posts-repo.test.js | ./node_modules/.bin/tap-spec) 2>&1
+true
+#+END_SRC
+
+#+RESULTS:
+#+begin_example
+
+  PostsRepo
+
+
+  fetch()
+
+    ✔ successfully fetches posts
+    ✔ returns empty array and error on failure
+
+
+  total:     2
+  passing:   2
+  duration:  11ms
+
+
+#+end_example
+
+*** Caveat
+
+Not every dependency has to become a parameter. Constant values and pure functions can be used without worry. Good example is lodash[fn:4].
+
+** Doing to much or too many things
+
+Also known as a failure to maintain single responsibility principle. Sometimes,
+when class or function becomes too big and tries to combine unrelated
+functionality, one finds an urge to use word "and" when naming it. This is a
+pretty clear sign that piece of code should be split. Another less affirmative
+property of mixed responsibility is code's size. Be aware of large objects or
+functions.
+
+# TODO: example of how mixed responsibility makes it hard to test? Large tests?
+# Long specs?
+
+** Business Logic in Constructors
+
+This one is
+
+* Epilogue
+
+# TODO: Tidy up, keeping main idea.
+
+Knowing all this, what should I conclude about modern web development using
+React framework? Recently I came to conclusion that it is a step down compared
+to Angular when it comes to writing testable code. I'm still writing tests and
+looking at tests written by others, but I notice a lot of problems and
+complexity.
+
+For one, tests are usually littered with special libraries that does module
+rewriting, like proxyquire.
+
+# TODO: expand on React's component/class confusion.
+
+* Footnotes
+
+[fn:4] https://github.com/lodash/lodash
+
+[fn:3] https://github.com/thlorenz/proxyquire
+
+[fn:2] http://misko.hevery.com/code-reviewers-guide/
+
+[fn:1] https://www.youtube.com/playlist?list=PLD0011D00849E1B79
+
