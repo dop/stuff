@@ -77,6 +77,52 @@ Knowing all that, let's see hypothetical blog example.
 
 # TODO: example
 
+#+CAPTIONS: Types.
+#+BEGIN_SRC typescript :tangle "src/trainwreck/bad/types.ts"
+interface User {
+  id: string;
+  email: string;
+  name: string;
+}
+
+interface Comment {
+  id: string;
+  user: User;
+  text: string;
+  created_at: Date;
+}
+
+interface Post {
+  id: string;
+  author: User;
+  text: string;
+  created_at: Date;
+  comments: Comment[];
+}
+#+END_SRC
+
+#+CAPTION: Blog.
+#+BEGIN_SRC typescript :tangle "src/trainwreck/bad/blog.ts"
+import {User, Comment, Post} from './types';
+
+type Order = 'asc' | 'desc';
+type OrderBy = keyof Post;
+
+class Repo {
+  constructor(private db: Database) {
+  }
+
+  getPosts(order: [Order, OrderBy] = ['desc', 'created_at'], limit: number = 10) {
+    return this.db.query('posts', {orderBy: [order[1]], order: [order[0]]})
+      .map(this.toPost);
+  }
+
+  private toPost(row) {
+    
+  }
+}
+#+END_SRC
+
 ** Global state
 Global state is sneaky. It hides under multiple names: mutable variables, static
 methods, singleton objects, and any dependencies that are not passed as
