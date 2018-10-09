@@ -7,23 +7,23 @@
 
 # Why did I write this article?
 
-I spend a lot of time writing tests and learning about software design in that
-process. I usually learn from my own mistakes, because I find it hard to
-understand abstract ideas unless I see concrete examples. But from time to time
-I would find some article or video that resonates and I think is worth sharing
-with others. In this post I'd like to summarize and discuss "Guide: Writing
-Testable Code"[fn:2] from Miško Hevery of Angular fame.
+I spend substantial amount of time writing tests and as a consequence learning
+about software design in a process. I usually learn mostly from my own mistakes,
+as I find it hard to understand abstract ideas unless I see concrete
+examples. But from time to time I would find some article or video that
+resonates and I think is worth sharing with others. In this post I'd like to
+summarize and discuss "Guide: Writing Testable Code"[fn:2] from Miško Hevery of
+Angular fame.
 
 The reason why I actually spent reading this pretty long document and watched
 Google Tech Talks on testable code[fn:1] is that my career as front-end
 developer started with Angular about 5 years ago. The great thing with Angular
 of that time was that it introduced architecture that made it hard not to write
 testable code. It took me a few years to appreciate what angular offered and to
-really grasp it's potential, because I lacked understanding of a guiding
-principles laid out in Miško's article and tech talks on testable code. Once
-I understood those simple rules, it became clear what constitutes testable
-code. It didn't become easy to write, but it became a lot clearer how to
-structure it.
+really grasp it's potential. I lacked understanding of a guiding principles laid
+out in Miško's articles. Once I understood those simple rules, it became clear
+what constitutes testable code. It didn't become easy to write one, but it
+became a lot clearer how to structure it.
 
 # What is my goal with this article?
 
@@ -55,7 +55,7 @@ for objects to be testable. Moreover, it also has this nice consequence of
 forcing your app or module to have clearly separated initialization and
 execution phases.
 
-** Digging into Collaborators and breaking the Law of Demeter by wrecking a train
+** Digging into Collaborators
 
 This one is very easy to spot. For example, if we see a second level access of
 property in your code like this
@@ -88,8 +88,7 @@ pattern is well spread practice, so how come it is bad? Well, if there is a need
 to test or try small portion of code in a REPL, it will become clear how bad it
 actually is.
 
-# TODO: examples about mutable variables, static methods, singleton objects,
-# dependency not passed as argument.
+Let's take a look at small example of sneaky global state.
 
 #+CAPTION: Cache module.
 #+BEGIN_SRC javascript :tangle "src/global-state/bad/cache.js"
