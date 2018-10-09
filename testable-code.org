@@ -297,7 +297,7 @@ test('PostsRepo', (assert) => {
 });
 #+END_SRC
 
-As a nice consequence of ditching proxyquire, our tests run twice as fast.
+Nice consequence of ditching proxyquire is that our tests run faster.
 
 #+BEGIN_SRC sh :exports results :results output
 (node src/global-state/good/posts-repo.test.js | ./node_modules/.bin/tap-spec) 2>&1
