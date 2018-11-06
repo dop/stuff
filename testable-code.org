@@ -421,9 +421,9 @@ Where should we put it? Let's help ourselves by imagining that we also have
 account registration form, and profile view. Now, =mailer= makes sense in a
 registration form, but profile screen does not need it. So we are going to move
 =mailer= to registration handler. It makes sense that request handler knows how to
-construct links, thus we can build email message containing confirmation URL
-there and pass it to =mailer=, which might have a lot more generic interface, for
-example =mailer.send(recepients, subject, body)=.
+construct links, thus we can build email message with confirmation URL
+there. We'll pass it to =mailer= via generic interface, for example
+=mailer.send(recepients, subject, body)=.
 
 To solve this puzzle of responsibilities, we asked some questions and gave
 ourselves hypothetical answers. In real world, question will have real answers,
