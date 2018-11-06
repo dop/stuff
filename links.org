@@ -12,3 +12,5 @@ http://misko.hevery.com/code-reviewers-guide/flaw-digging-into-collaborators/
 http://misko.hevery.com/code-reviewers-guide/flaw-brittle-global-state-singletons/
 **** Flaw: Class Does Too Much
 http://misko.hevery.com/code-reviewers-guide/flaw-class-does-too-much/
+** TDD as maintenance technique
+https://oneofus.la/have-emacs-will-hack/2018-03-07-tdd-does-not-work-the-way-you-think-it-does.html
