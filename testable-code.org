@@ -8,29 +8,29 @@
 # Why did I write this article?
 
 I spend substantial amount of time writing tests and as a consequence learning
-about software design in a process. I usually learn mostly from my own mistakes,
-as I find it hard to understand abstract ideas unless I see concrete
+about software design in a process. I usually learn most from my own mistakes,
+as it is hard to understand abstract ideas unless presented with concrete
 examples. But from time to time I would find some article or video that
 resonates and I think is worth sharing with others. In this post I'd like to
 summarize and discuss "Guide: Writing Testable Code"[fn:2] from Miško Hevery of
-Angular fame.
+AngularJS fame.
 
 The reason why I actually spent reading this pretty long document and watched
 Google Tech Talks on testable code[fn:1] is that my career as front-end
-developer started with Angular about 5 years ago. The great thing with Angular
-of that time was that it introduced architecture that made it hard not to write
-testable code. It took me a few years to appreciate what angular offered and to
-really grasp it's potential. I lacked understanding of a guiding principles laid
-out in Miško's articles. Once I understood those simple rules, it became clear
-what constitutes testable code. It didn't become easy to write one, but it
-became a lot clearer how to structure it.
+developer started with AngularJS about 5 years ago. The great thing with
+AngularJS at that time was that it introduced architecture that made it hard not
+to write testable code. It took me a couple of years to appreciate what
+AngularJS offered and to really grasp it's potential[fn:5]. I lacked
+understanding of a guiding principles laid out in Miško's articles. Once I
+understood those, it became clear what constitutes testable code. It didn't
+become easy to write one, but it became a lot clearer how to structure it.
 
 # What is my goal with this article?
 
 My hope with this article is to channel Miško's ideas and give you, dear reader,
 cognitive tools for recognizing untestable code.
 
-/Note/: In this article I will be using TypeScript or JavaScript for examples, but
+/Note/: In this article I will be using TypeScript and JavaScript for examples, but
 rules are universal and can be applied to other languages. Even purely
 functional ones. But to be fair, purely functional languages, like Elm, makes it
 really really hard to write untestable code.
@@ -40,22 +40,22 @@ really really hard to write untestable code.
 "Guide: Writing Testable Code" was written as internal document at Google
 targeting Java code. Many of given examples are very much tied to Java and
 Dependency Injection framework Guice. But the underlying ideas are applicable to
-TypeScript or JavaScript nonetheless.
+TypeScript and JavaScript nonetheless.
 
 Guide consists of 4 parts (flaws):
-1. Constructor does Real Work
-2. Digging into Collaborators
-3. Brittle Global State & Singletons
-4. Class Does Too Much
+1. "Constructor does Real Work"
+2. "Digging into Collaborators"
+3. "Brittle Global State & Singletons"
+4. "Class Does Too Much"
 
-Parts 2 to 4 is kind of obvious, but we will go through them anyway. While part
+Parts 2 to 4 are kind of obvious, but we will go through them anyway. While part
 1 is definitely a common sense one, I don't think I ever saw it mentioned and
 pointed out so clearly before. Making your constructors dumb is very important
 for objects to be testable. Moreover, it also has this nice consequence of
 forcing your app or module to have clearly separated initialization and
 execution phases.
 
-** Digging into Collaborators
+** TODO Digging into Collaborators
 
 This one is very easy to spot. For example, if we see a second level access of
 property in your code like this
@@ -75,9 +75,7 @@ directly?
 
 Knowing all that, let's see hypothetical blog example.
 
-# TODO: example
-
-#+CAPTIONS: Types.
+#+CAPTION: Types.
 #+BEGIN_SRC typescript :tangle "src/trainwreck/bad/types.ts"
 interface User {
   id: string;
@@ -102,7 +100,7 @@ interface Post {
 #+END_SRC
 
 #+CAPTION: Blog.
-#+BEGIN_SRC typescript :tangle "src/trainwreck/bad/blog.ts"
+#+BEGIN_SRC typescript :tangle "src/trainwreck/bad/blog.ts" :dir "src/trainwreck/bad"
 import {User, Comment, Post} from './types';
 
 type Order = 'asc' | 'desc';
@@ -118,7 +116,7 @@ class Repo {
   }
 
   private toPost(row) {
-    
+
   }
 }
 #+END_SRC
@@ -129,23 +127,23 @@ methods, singleton objects, and any dependencies that are not passed as
 arguments. Global state is infectious. Single instance of it in small module
 will corrupt all of your application.
 
-I guess the main takeaway is that global state might not be obvious. Singleton
-pattern is well spread practice, so how come it is bad? Well, if there is a need
-to test or try small portion of code in a REPL, it will become clear how bad it
-actually is.
+Main point I want you take away is that global state might not be
+obvious. Singleton pattern in OOP is well spread practice, so how come it is
+bad? Well, if there is a need to test or try small portion of code in a REPL, it
+will become clear how bad it actually is.
 
 Let's take a look at small example of sneaky global state.
 
 #+CAPTION: Cache module.
 #+BEGIN_SRC javascript :tangle "src/global-state/bad/cache.js"
-const _cache = {};
+const cache = {};
 
 function set(key, value) {
-  return _cache[key] = value;
+  return cache[key] = value;
 }
 
 function get(key) {
-  return _cache[key];
+  return cache[key];
 }
 
 module.exports = {
@@ -307,7 +305,7 @@ module.exports = PostsRepo;
 As a result, we no longer need proxyquire. It's also painfully clear, that we
 have a cache, and we should be careful with it.
 
-#+CAPTION: Complicated tests.
+#+CAPTION: Complicated but honest tests.
 #+BEGIN_SRC javascript :tangle "src/global-state/good/posts-repo.test.js"
 const test = require('tape');
 
@@ -371,23 +369,71 @@ true
 
 *** Caveat
 
-Not every dependency has to become a parameter. Constant values and pure functions can be used without worry. Good example is lodash[fn:4].
+Not every dependency has to become a parameter. Constant values, value objects,
+and pure functions can be used without worry. Good example is lodash[fn:4].
 
-** Doing to much or too many things
+** Doing too much or too many things
 
-Also known as a failure to maintain single responsibility principle. Sometimes,
-when class or function becomes too big and tries to combine unrelated
-functionality, one finds an urge to use word "and" when naming it. This is a
-pretty clear sign that piece of code should be split. Another less affirmative
-property of mixed responsibility is code's size. Be aware of large objects or
-functions.
+Also known as a failure to maintain single responsibility principle. Usual rule
+of thumb is to look for names containing "and". But I find this problematic as
+some people are good (or bad) at naming. It is possible to name =PersistentCache=
+as =CacheAndSave=, but it does not mean that former is good and latter is
+bad. It's hard to come up with example that is not ridiculous, but here we go...
 
-# TODO: example of how mixed responsibility makes it hard to test? Large tests?
-# Long specs?
+#+BEGIN_SRC javascript
+function UserRepo(store, mailer) {
+  return {
+    list() {
+      return store.fetch('user:*');
+    },
+    fetch(id) {
+      return store.fetch('user:' + id);
+    },
+    async update(id, data) {
+      const old = await this.fetch(id);
+      const result = await store.save('user:' + data.id, data);
+      if (old.email != data.email) {
+        await mailer.confirmEmail(id, data.email);
+      }
+      return result;
+    },
+    async save(data) {
+      const id = await store.nextId();
+      const result = await store.save('user:' + id, data);
+      await mailer.confirmEmail(id, data.email);
+      return result;
+    }
+  };
+}
+#+END_SRC
 
-** Business Logic in Constructors
+Besides the funky key value store, we have repository initiating email
+confirmation. On it's own, this only feels wrong, but might be completely
+benign. Why does it feel wrong? First, =mailer= is used only in two of four
+methods. Maybe it would make sense to split =UserRepo= into reader and writer
+parts? Queries and commands? Invocation of confirmation flow also raises some
+questions. Since we are passing user ID, is =mailer= supposed to understand it's
+meaning? Will we have to encode confirmation link inside =mailer=? Does it mean
+that =mailer= will have to understand routing? Oh my... It seems that =mailer= is
+not supposed to be here, and it's interface has to be different.
 
-This one is
+Where should we put it? Let's help ourselves by imagining that we also have
+account registration form, and profile view. Now, =mailer= makes sense in a
+registration form, but profile screen does not need it. So we are going to move
+=mailer= to registration handler. It makes sense that request handler knows how to
+construct links, thus we can build email message containing confirmation URL
+there and pass it to =mailer=, which might have a lot more generic interface, for
+example =mailer.send(recepients, subject, body)=.
+
+To solve this puzzle of responsibilities, we asked some questions and gave
+ourselves hypothetical answers. In real world, question will have real answers,
+which will lead to other (but possibly similar) solutions. Main takeaway: use
+your head and don't overdo it. Sometimes things are not easily separable. Think
+about your domain.
+
+** TODO Business Logic in Constructors
+
+This one is my favourite.
 
 * Epilogue
 
@@ -395,16 +441,19 @@ This one is
 
 Knowing all this, what should I conclude about modern web development using
 React framework? Recently I came to conclusion that it is a step down compared
-to Angular when it comes to writing testable code. I'm still writing tests and
+to AngularJS when it comes to writing testable code. I'm still writing tests and
 looking at tests written by others, but I notice a lot of problems and
 complexity.
 
 For one, tests are usually littered with special libraries that does module
-rewriting, like proxyquire.
+rewriting, like proxyquire. It's not fair to blame React for it, but it
+definitely was not designed with testability in mind.
 
 # TODO: expand on React's component/class confusion.
 
 * Footnotes
+
+[fn:5] To be honest, AngularJS is not perfect, but it has really great testing story.
 
 [fn:4] https://github.com/lodash/lodash
 
