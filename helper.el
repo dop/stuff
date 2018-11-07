@@ -67,24 +67,10 @@
     (c-indent-region (point-min) (point-max))
     (buffer-string)))
 
-(defun dp/org-table-bounds ()
-  (let (start end)
-    (save-excursion
-      (beginning-of-line)
-      (while (and (looking-at "|") (= 0 (forward-line -1))))
-      (when (not (looking-at "|")) (forward-line))
-      (setq start (point))
-      (while (and (looking-at "|") (= 0 (forward-line))))
-      (when (looking-at "|") (goto (end-of-buffer)))
-      (setq end (point))
-      (when (= start end)
-        (error "No org table in sight!"))
-      (cons start end))))
-
 (defun dp/convert-example-table-to-src-block ()
   (interactive)
   (dp/with-region-or
-   #'dp/org-table-bounds
+   #'dp/get-org-table-bounds
    (lambda (start end)
      (destructuring-bind (bad good)
          (dp/example-table-to-src-blocks (buffer-substring start end))
