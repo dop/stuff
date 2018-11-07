@@ -55,71 +55,46 @@ for objects to be testable. Moreover, it also has this nice consequence of
 forcing your app or module to have clearly separated initialization and
 execution phases.
 
-** TODO Digging into Collaborators
+** Digging into Collaborators
 
 This one is very easy to spot. For example, if we see a second level access of
 property in your code like this
 
-#+BEGIN_SRC typescript
-this.commentsRepository.getById(x).getUser()
+#+BEGIN_SRC javascriptn
+this.session.getAccount().getNickname()
 #+END_SRC
 
-we have a problem. It will become clear when writing a test for it. Or when
-=Comment= interface changes by renaming =getUser= to =getAuthor= and it requires a
-change in many places instead of in =CommentsRepository= only.
+we have a problem. It will become clear when writing a test for it. We will have
+to either mock or construct =Account= in addition to =Session= in all places =Session=
+is a dependency. It will also be less than optimal when =Session= interface changes
+by renaming =getAccount= to =getProfile= and it requires a change in many
+places. While most IDEs will not have problem with it, but your commit history
+will get noisy.
 
-While spotting this flaw is easy, fixing it might be not so straightforward. We
-must think before we act and ask as many questions as we can. Do we really need
-=CommentsRepository= in a given context? Maybe =Comment= should have been passed
-directly?
+Let's take a look at the following example.
 
-Knowing all that, let's see hypothetical blog example.
-
-#+CAPTION: Types.
-#+BEGIN_SRC typescript :tangle "src/trainwreck/bad/types.ts"
-interface User {
-  id: string;
-  email: string;
-  name: string;
+#+BEGIN_SRC javascript
+function StatusBar({session, onLogout}) {
+  const name = getName(getAccount(session));
+  return (
+    <div>Hello, {name}! <button onClick={onLogout}>Logout</button></div>;
+  );
 }
 
-interface Comment {
-  id: string;
-  user: User;
-  text: string;
-  created_at: Date;
-}
-
-interface Post {
-  id: string;
-  author: User;
-  text: string;
-  created_at: Date;
-  comments: Comment[];
+function Avatar({session}) {
+  const account = getAccount(session);
+  const profilePictureUrl = getProfilePicture(account);
+  const name = getName(account);
+  return (
+    <div><img src={profilePictureUrl}/><span>{name}</span></div>
+  );
 }
 #+END_SRC
 
-#+CAPTION: Blog.
-#+BEGIN_SRC typescript :tangle "src/trainwreck/bad/blog.ts" :dir "src/trainwreck/bad"
-import {User, Comment, Post} from './types';
-
-type Order = 'asc' | 'desc';
-type OrderBy = keyof Post;
-
-class Repo {
-  constructor(private db: Database) {
-  }
-
-  getPosts(order: [Order, OrderBy] = ['desc', 'created_at'], limit: number = 10) {
-    return this.db.query('posts', {orderBy: [order[1]], order: [order[0]]})
-      .map(this.toPost);
-  }
-
-  private toPost(row) {
-
-  }
-}
-#+END_SRC
+Instead of chains of method calls, we have nested selectors[fn:6] exhibiting the
+same issue. To avoid digging into =session=, we might introduce =getAccountPicture=
+and =getAccountName= methods. Another solution is to not pass whole =session= to
+these simple components, but that would defeat the purpose of this example.
 
 ** Global state
 Global state is sneaky. It hides under multiple names: mutable variables, static
@@ -437,21 +412,20 @@ This one is my favourite.
 
 * Epilogue
 
-# TODO: Tidy up, keeping main idea.
-
 Knowing all this, what should I conclude about modern web development using
 React framework? Recently I came to conclusion that it is a step down compared
 to AngularJS when it comes to writing testable code. I'm still writing tests and
-looking at tests written by others, but I notice a lot of problems and
-complexity.
+looking at tests written by others, but I notice that tests are usually littered
+with special libraries that does module rewriting, like proxyquire. We already
+touched upon global state issues that might be hiding behind this.
 
-For one, tests are usually littered with special libraries that does module
-rewriting, like proxyquire. It's not fair to blame React for it, but it
-definitely was not designed with testability in mind.
-
-# TODO: expand on React's component/class confusion.
+It's not completely fair to blame React for poor testing practices, but let's
+say AngularJS did it better by having dependency injection pattern at it's
+core. React won in the end by outdoing AngularJS in almost everything else.
 
 * Footnotes
+
+[fn:6] Common term used to refer to functions querying, for example, Redux state.
 
 [fn:5] To be honest, AngularJS is not perfect, but it has really great testing story.
 
