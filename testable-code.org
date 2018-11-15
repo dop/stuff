@@ -1,4 +1,4 @@
-#+TITLE: Writing Testable Code: TypeScript and JavaScript Edition
+#+TITLE: Writing Testable Code: JavaScript and TypeScript Edition
 #+AUTHOR: Donatas Petrauskas
 #+OPTIONS: toc:nil num:nil
 #+HTML_HEAD: <link rel="stylesheet" href="org/style.css" type="text/css">
@@ -23,7 +23,7 @@ to write testable code. It took me a couple of years to appreciate what
 AngularJS offered and to really grasp it's potential[fn:5]. I lacked
 understanding of a guiding principles laid out in Miško's articles. Once I
 understood those, it became clear what constitutes testable code. It didn't
-become easy to write one, but it became a lot clearer how to structure it.
+become easy to write, though.
 
 # What is my goal with this article?
 
@@ -65,11 +65,10 @@ this.session.getAccount().getNickname()
 #+END_SRC
 
 we have a problem. It will become clear when writing a test for it. We will have
-to either mock or construct =Account= in addition to =Session= in all places =Session=
-is a dependency. It will also be less than optimal when =Session= interface changes
-by renaming =getAccount= to =getProfile= and it requires a change in many
-places. While most IDEs will not have problem with it, but your commit history
-will get noisy.
+to either mock or construct =Account= in addition to =Session= in all places where
+=Session= is a dependency. Renaming a method of =Account= will impact places where
+direct dependency is =Session=, not =Account=. While most IDEs have no problem with
+renaming, your code revision history will become noisy.
 
 Let's take a look at the following example.
 
@@ -353,7 +352,7 @@ Also known as a failure to maintain single responsibility principle. Usual rule
 of thumb is to look for names containing "and". But I find this problematic as
 some people are good (or bad) at naming. It is possible to name =PersistentCache=
 as =CacheAndSave=, but it does not mean that former is good and latter is
-bad. It's hard to come up with example that is not ridiculous, but here we go...
+bad. It's hard to come up with example that is not ridiculous, but here we go.
 
 #+BEGIN_SRC javascript
 function UserRepo(store, mailer) {
