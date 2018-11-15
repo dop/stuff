@@ -411,18 +411,28 @@ This one is my favourite.
 
 * Epilogue
 
-Knowing all this, what should I conclude about modern web development using
-React framework? Recently I came to conclusion that it is a step down compared
-to AngularJS when it comes to writing testable code. I'm still writing tests and
-looking at tests written by others, but I notice that tests are usually littered
-with special libraries that does module rewriting, like proxyquire. We already
-touched upon global state issues that might be hiding behind this.
+After meditating on this blog post for some time I couldn't help but reflect and
+compare my experience with React and AngularJS. There's still a place in my
+heart for Angular's principled testable design, but it definitely loses by
+having overly complex templating layer. And that is the part that front-end
+developers spend most of the time on.
 
-It's not completely fair to blame React for poor testing practices, but let's
-say AngularJS did it better by having dependency injection pattern at it's
-core. React won in the end by outdoing AngularJS in almost everything else.
+On the other hand, while it's very easy[fn:7] to start with React, unprincipled
+developers would soon find themselves in a mess of global state and monolithic
+untestable application. It's not React's fault, but, I guess, it missed on
+pedagogical opportunity.
+
+If you find yourself overwhelmed by multitude of state management solutions,
+latest React developments, or just general JavaScript fatigue, just know that
+you're not alone. We're at least two in this world. Two unique snowflakes, like
+two React codebases, vastly different because started on different weeks, when
+different libraries were trending. Trends will pass, but these 4 pitfalls we
+just learned about will still be there. Let's stay vigilant and keep out code
+testable, and thus evolvable.
 
 * Footnotes
+
+[fn:7] Some would argue otherwise. Search for "JavaScript fatigue".
 
 [fn:6] Common term used to refer to functions querying, for example, Redux state.
 
