@@ -1,4 +1,5 @@
-#+TITLE: Writing Testable Code: JavaScript and TypeScript Edition
+#+TITLE: Writing Testable Code
+#+SUBTITLE: TypeScript and JavaScript Edition
 #+AUTHOR: Donatas Petrauskas
 #+OPTIONS: toc:nil num:nil
 #+HTML_HEAD: <link rel="stylesheet" href="org/style.css" type="text/css">
@@ -7,33 +8,32 @@
 
 # Why did I write this article?
 
-I spend substantial amount of time writing tests and as a consequence learning
-about software design in a process. I usually learn most from my own mistakes,
-as it is hard to understand abstract ideas unless presented with concrete
-examples. But from time to time I would find some article or video that
-resonates and I think is worth sharing with others. In this post I'd like to
+I spend substantial amount of time writing tests and consequentially learning
+about software design in the process. I best learn from my own mistakes as I
+find it hard to understand abstract ideas unless presented with concrete and
+familiar examples. But from time to time I would find some article or video that
+resonates with me and I think is worth sharing. In this post I'd like to
 summarize and discuss "Guide: Writing Testable Code"[fn:2] from Miško Hevery of
 AngularJS fame.
 
-The reason why I actually spent reading this pretty long document and watched
-Google Tech Talks on testable code[fn:1] is that my career as front-end
-developer started with AngularJS about 5 years ago. The great thing with
-AngularJS at that time was that it introduced architecture that made it hard not
-to write testable code. It took me a couple of years to appreciate what
-AngularJS offered and to really grasp it's potential[fn:5]. I lacked
-understanding of a guiding principles laid out in Miško's articles. Once I
-understood those, it became clear what constitutes testable code. It didn't
-become easy to write, though.
+The reason why I read this pretty long document and watched Google Tech Talks on
+testable code[fn:1] is that my career as front-end developer started with
+AngularJS about 6[fn:8] years ago. The great thing with AngularJS was (and is)
+that it introduced architecture which encourage testable code. It took me a
+couple of years to appreciate what AngularJS offered and to really grasp it's
+potential. Guiding principles laid out in Miško's articles was what I
+lacked. Once understood, it became clear what constitutes testable code. It
+didn't become easy to write, though.
 
 # What is my goal with this article?
 
 My hope with this article is to channel Miško's ideas and give you, dear reader,
 cognitive tools for recognizing untestable code.
 
-/Note/: In this article I will be using TypeScript and JavaScript for examples, but
-rules are universal and can be applied to other languages. Even purely
-functional ones. But to be fair, purely functional languages, like Elm, makes it
-really really hard to write untestable code.
+/Note/: In this article I will be using TypeScript and JavaScript code as
+examples, but rules are universal and can be applied to other languages. Even
+purely functional ones. But to be fair, purely functional languages, like Elm,
+makes it really hard to write untestable code.
 
 * About "Guide: Writing Testable Code"
 
@@ -55,45 +55,7 @@ for objects to be testable. Moreover, it also has this nice consequence of
 forcing your app or module to have clearly separated initialization and
 execution phases.
 
-** Digging into Collaborators
-
-This one is very easy to spot. For example, if we see a second level access of
-property in your code like this
-
-#+BEGIN_SRC javascriptn
-this.session.getAccount().getNickname()
-#+END_SRC
-
-we have a problem. It will become clear when writing a test for it. We will have
-to either mock or construct =Account= in addition to =Session= in all places where
-=Session= is a dependency. Renaming a method of =Account= will impact places where
-direct dependency is =Session=, not =Account=. While most IDEs have no problem with
-renaming, your code revision history will become noisy.
-
-Let's take a look at the following example.
-
-#+BEGIN_SRC javascript
-function StatusBar({session, onLogout}) {
-  const name = getName(getAccount(session));
-  return (
-    <div>Hello, {name}! <button onClick={onLogout}>Logout</button></div>;
-  );
-}
-
-function Avatar({session}) {
-  const account = getAccount(session);
-  const profilePictureUrl = getProfilePicture(account);
-  const name = getName(account);
-  return (
-    <div><img src={profilePictureUrl}/><span>{name}</span></div>
-  );
-}
-#+END_SRC
-
-Instead of chains of method calls, we have nested selectors[fn:6] exhibiting the
-same issue. To avoid digging into =session=, we might introduce =getAccountPicture=
-and =getAccountName= methods. Another solution is to not pass whole =session= to
-these simple components, but that would defeat the purpose of this example.
+I want to take you through these flaws from, subjectively, most obvious to least.
 
 ** Global state
 Global state is sneaky. It hides under multiple names: mutable variables, static
@@ -346,6 +308,56 @@ true
 Not every dependency has to become a parameter. Constant values, value objects,
 and pure functions can be used without worry. Good example is lodash[fn:4].
 
+** Digging into Collaborators a.k.a Train Wreck
+
+This one is very easy to spot. For example, if we see a second level access of
+property in your code like this
+
+#+BEGIN_SRC javascript
+this.session.getAccount().getNickname()
+#+END_SRC
+
+we have a problem. It will become clear when writing a test for it. We will have
+to either mock or construct =Account= in addition to =Session= in all places where
+=Session= is a dependency. Renaming a method of =Account= will impact places where
+direct dependency is =Session=, not =Account=. While most IDEs have no problem with
+renaming, your code repository history will become noisy.
+
+Let's take a look at the following example.
+
+#+BEGIN_SRC javascript
+function App() {
+  const session = useSession();
+  return (
+    <div>
+      <div>Hello, {session?.account?.name ?? 'Anonymous'}!</div>
+      // ...
+    </div>
+  );
+}
+#+END_SRC
+
+Instead of chains of method calls we have nested property access exhibiting the
+same issue. To avoid digging into =session=, we might introduce a selector
+=getAccountName= or pass only necessary data to child component.
+
+Here's how second solution might look.
+
+#+BEGIN_SRC javascript
+function App() {
+  const session = useSession();
+  return (
+    <div>
+      <Greet account={session.account} />
+      // ...
+    </div>
+  );
+}
+#+END_SRC
+
+Both of the solutions are related to separating concerns. To choose correct one,
+you need to answer a question of what exactly component needs to do its job.
+
 ** Doing too much or too many things
 
 Also known as a failure to maintain single responsibility principle. Usual rule
@@ -428,15 +440,15 @@ you're not alone. We're at least two in this world. Two unique snowflakes, like
 two React codebases, vastly different because started on different weeks, when
 different libraries were trending. Trends will pass, but these 4 pitfalls we
 just learned about will still be there. Let's stay vigilant and keep out code
-testable, and thus evolvable.
+testable and thus evolvable.
 
 * Footnotes
+
+[fn:8] I switched to full front-end position in autumn of 2013.
 
 [fn:7] Some would argue otherwise. Search for "JavaScript fatigue".
 
 [fn:6] Common term used to refer to functions querying, for example, Redux state.
-
-[fn:5] To be honest, AngularJS is not perfect, but it has really great testing story.
 
 [fn:4] https://github.com/lodash/lodash
 
